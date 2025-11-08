@@ -7,7 +7,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import AuthButton from "@/components/AuthButton";
-import { FiPlusCircle, FiGithub } from "react-icons/fi";
+import { FiPlusCircle, FiGithub, FiCalendar, FiEye, FiTrendingUp, FiBook } from "react-icons/fi";
 
 interface Blog {
   id: string;
@@ -16,162 +16,519 @@ interface Blog {
   images?: string[];
   authorName?: string;
   authorAvatar?: string;
-  authorGithub?: string;
+  githubUrl?: string;
   createdAt?: { seconds: number };
 }
 
 export default function HomePage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [user] = useAuthState(auth);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBlogs = async () => {
-      const q = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Blog[];
-      setBlogs(data);
+      try {
+        const q = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Blog[];
+        setBlogs(data);
+      } catch (error) {
+        console.error("Error fetching blogs:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchBlogs();
   }, []);
 
+  const formatDate = (seconds: number) => {
+    return new Date(seconds * 1000).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  // Hanya ambil 3 blog terbaru untuk ditampilkan di home
+  const featuredBlogs = blogs.slice(0, 3);
+
   return (
-    <main className="min-h-screen bg-[#0d0d0d] text-white flex flex-col">
-      {/* NAVBAR */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-[#0d0d0d]/90 backdrop-blur-lg border-b border-gray-800">
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
+      {/* NAVBAR DENGAN MENU BLOGS */}
+      <header className="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold tracking-wide">
-            <span className="text-blue-500">TI</span> GALLERY
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="font-bold text-white text-lg">TI</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight group-hover:text-blue-400 transition-colors">
+                GAMASTI
+              </h1>
+              <p className="text-xs text-gray-400">By HMPTI</p>
+            </div>
           </Link>
-          <AuthButton />
+
+          {/* NAVIGATION MENU */}
+          <nav className="hidden md:flex items-center gap-8">
+            <Link 
+              href="/" 
+              className="text-white font-medium hover:text-blue-400 transition-colors"
+            >
+              Beranda
+            </Link>
+            <Link 
+              href="/blog" 
+              className="flex items-center gap-2 text-gray-300 hover:text-blue-400 transition-colors group"
+            >
+              <FiBook className="text-lg group-hover:scale-110 transition-transform" />
+              <span>Semua Blog</span>
+            </Link>
+            {user && (
+              <Link 
+                href="/dashboard" 
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-4 py-2 rounded-xl font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
+              >
+                <FiPlusCircle className="text-lg" />
+                <span>Tulis Blog</span>
+              </Link>
+            )}
+          </nav>
+
+          <div className="flex items-center gap-4">
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              {user && (
+                <Link 
+                  href="/dashboard" 
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-3 py-2 rounded-xl font-medium text-sm"
+                >
+                  <FiPlusCircle className="text-lg" />
+                </Link>
+              )}
+            </div>
+            <AuthButton />
+          </div>
+        </div>
+
+        {/* MOBILE NAVIGATION */}
+        <div className="md:hidden border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-around">
+            <Link 
+              href="/" 
+              className="flex flex-col items-center gap-1 text-white text-xs"
+            >
+              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <span className="text-sm">🏠</span>
+              </div>
+              <span>Beranda</span>
+            </Link>
+            <Link 
+              href="/blog" 
+              className="flex flex-col items-center gap-1 text-gray-300 hover:text-blue-400 transition-colors text-xs"
+            >
+              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <FiBook className="text-sm" />
+              </div>
+              <span>Blog</span>
+            </Link>
+            {user && (
+              <Link 
+                href="/dashboard" 
+                className="flex flex-col items-center gap-1 text-gray-300 hover:text-blue-400 transition-colors text-xs"
+              >
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                  <FiPlusCircle className="text-sm" />
+                </div>
+                <span>Tulis</span>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="flex flex-col items-center justify-center text-center mt-32 px-6">
-        <motion.h1
+      {/* HERO SECTION */}
+      <section className="relative flex flex-col items-center justify-center text-center mt-32 px-6 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-5xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-300 bg-clip-text text-transparent"
+          transition={{ duration: 0.8 }}
+          className="relative z-10"
         >
-          Galeri Mahasiswa TI
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          <h1 className="text-5xl sm:text-7xl font-extrabold mb-6">
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">
+              GAMASTI
+            </span>
+          </h1>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="text-xl text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed"
+          >
+            Platform kolaborasi mahasiswa Teknik Informatika untuk berbagi karya, 
+            inovasi, dan pengetahuan dalam dunia teknologi
+          </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+          >
+            <Link
+              href="#blogs"
+              className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all"
+            >
+              Jelajahi Karya
+            </Link>
+            <Link
+              href="/blog"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-4 rounded-xl font-medium backdrop-blur-sm transition-all"
+            >
+              <FiBook className="text-lg" />
+              Lihat Semua Blog
+            </Link>
+          </motion.div>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-gray-400 text-lg max-w-2xl mb-12"
+          transition={{ delay: 0.9, duration: 0.8 }}
+          className="relative z-10 grid grid-cols-3 gap-8 max-w-2xl mx-auto"
         >
-          Temukan karya, artikel, dan proyek inspiratif dari mahasiswa Teknik Informatika —
-          berbagi ilmu, berbagi semangat.
-        </motion.p>
+          {[
+            { icon: FiTrendingUp, label: "Blog Aktif", value: blogs.length },
+            { icon: FiEye, label: "Pengunjung", value: "1" },
+            { icon: FiCalendar, label: "Tahun Aktif", value: "2025" }
+          ].map((stat, index) => (
+            <div key={index} className="text-center">
+              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center mx-auto mb-3 border border-white/10">
+                <stat.icon className="text-2xl text-cyan-400" />
+              </div>
+              <div className="text-2xl font-bold text-white">{stat.value}</div>
+              <div className="text-sm text-gray-400">{stat.label}</div>
+            </div>
+          ))}
+        </motion.div>
       </section>
 
-      {/* BLOG LIST */}
-      <section className="max-w-7xl mx-auto mt-10 px-6 pb-24 w-full">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-semibold text-gray-100">
-            📰 Berita & Karya Terbaru
-          </h2>
+      {/* BLOG LIST SECTION - HANYA 3 BLOG */}
+      <section id="blogs" className="max-w-7xl mx-auto mt-20 px-6 pb-24 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="flex items-center justify-between mb-12"
+        >
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              ✨ Karya Terbaru
+            </h2>
+            <p className="text-gray-400">
+              3 blog terbaru dari mahasiswa Teknik Informatika
+            </p>
+          </div>
 
-          {/* ✅ Tombol tambah blog */}
-          {user && (
+          <div className="flex items-center gap-4">
             <Link
-              href="/dashboard"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium shadow-md transition-all"
+              href="/blog"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 rounded-xl font-medium backdrop-blur-sm transition-all"
             >
-              <FiPlusCircle className="text-lg" /> Tambah Blog
+              <FiBook className="text-lg" />
+              Lihat Semua
             </Link>
-          )}
-        </div>
+            {user && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-5 py-3 rounded-xl font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
+              >
+                <FiPlusCircle className="text-lg" /> 
+                Tambah Blog
+              </Link>
+            )}
+          </div>
+        </motion.div>
 
-        {blogs.length === 0 ? (
-          <p className="text-gray-500 text-center">
-            Belum ada blog yang dipublikasikan.
-          </p>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white/5 rounded-2xl p-6 animate-pulse">
+                <div className="h-48 bg-gray-700 rounded-xl mb-4"></div>
+                <div className="h-4 bg-gray-700 rounded mb-2"></div>
+                <div className="h-4 bg-gray-700 rounded mb-2 w-3/4"></div>
+                <div className="h-3 bg-gray-700 rounded mb-4 w-1/2"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-700 rounded-full"></div>
+                  <div className="h-3 bg-gray-700 rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : featuredBlogs.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
+              <FiBook className="text-3xl text-gray-400" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-300 mb-3">Belum Ada Blog</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-6">
+              Jadilah yang pertama membagikan pengetahuan dan karya Anda kepada komunitas
+            </p>
+            {user && (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-xl font-medium transition-colors"
+              >
+                <FiPlusCircle />
+                Buat Blog Pertama
+              </Link>
+            )}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {blogs.map((blog, i) => (
-              <motion.div
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {featuredBlogs.map((blog, i) => (
+              <motion.article
                 key={blog.id}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="group bg-[#141414] border border-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-blue-900/30 transition-all duration-300 hover:-translate-y-1"
+                transition={{ delay: i * 0.1 }}
+                className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:-translate-y-2"
               >
                 {/* IMAGE */}
                 {blog.images && blog.images.length > 0 ? (
-                  <div className="relative h-56 overflow-hidden">
-                    <img
-                      src={blog.images[0]}
-                      alt={blog.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  <Link href={`/blog/${blog.id}`}>
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={blog.images[0]}
+                        alt={blog.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute top-4 right-4">
+                        <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full border border-white/20">
+                          {blog.images.length} foto
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
                 ) : (
-                  <div className="h-56 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center text-gray-600 italic">
-                    Tidak ada gambar
-                  </div>
+                  <Link href={`/blog/${blog.id}`}>
+                    <div className="h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10"></div>
+                      <div className="text-center z-10">
+                        <FiBook className="text-4xl text-gray-600 mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm italic">Tidak ada gambar</p>
+                      </div>
+                    </div>
+                  </Link>
                 )}
 
                 {/* CONTENT */}
-                <div className="p-5 flex flex-col justify-between h-[220px]">
+                <div className="p-6 flex flex-col justify-between h-64">
                   <div>
-                    <h3 className="font-semibold text-xl mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
-                      {blog.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                    <Link href={`/blog/${blog.id}`}>
+                      <h3 className="font-bold text-lg mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
+                        {blog.title}
+                      </h3>
+                    </Link>
+                    <p className="text-gray-400 text-sm mb-4 line-clamp-3 leading-relaxed">
                       {blog.content}
                     </p>
                   </div>
 
-                  {/* AUTHOR + LINK */}
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
-                      {blog.authorAvatar && (
+                  {/* AUTHOR + META */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-3">
                         <img
-                          src={blog.authorAvatar}
+                          src={blog.authorAvatar || "/default-avatar.png"}
                           alt={blog.authorName}
-                          className="w-6 h-6 rounded-full"
+                          className="w-8 h-8 rounded-full border-2 border-white/20"
                         />
-                      )}
-
-                      {blog.authorGithub ? (
-                        <a
-                          href={blog.authorGithub}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 hover:text-blue-400 transition"
-                        >
-                          <FiGithub className="text-base" />
-                          <span>{blog.authorName || "Anonim"}</span>
-                        </a>
-                      ) : (
-                        <span>{blog.authorName || "Anonim"}</span>
+                        <div>
+                          <p className="font-medium text-white">
+                            {blog.authorName || "Anonim"}
+                          </p>
+                          {blog.githubUrl && (
+                            <a
+                              href={blog.githubUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors text-xs"
+                            >
+                              <FiGithub className="text-xs" />
+                              GitHub
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {blog.createdAt && (
+                        <div className="flex items-center gap-1 text-gray-500 text-xs">
+                          <FiCalendar className="text-xs" />
+                          {formatDate(blog.createdAt.seconds)}
+                        </div>
                       )}
                     </div>
 
                     <Link
                       href={`/blog/${blog.id}`}
-                      className="text-blue-400 hover:text-blue-300 font-medium transition"
+                      className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 rounded-xl text-center font-medium transition-all group-hover:border-blue-500/30 group-hover:text-blue-400"
                     >
-                      Selengkapnya →
+                      Baca Selengkapnya
                     </Link>
                   </div>
                 </div>
-              </motion.div>
+              </motion.article>
             ))}
           </div>
         )}
+
+        {/* View All Blogs Button - Selalu tampilkan jika ada blog */}
+        {blogs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="text-center mt-12"
+          >
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all hover:scale-105"
+            >
+              <FiBook className="text-lg" />
+              Lihat Semua Blog ({blogs.length})
+            </Link>
+          </motion.div>
+        )}
+      </section>
+
+      {/* FEATURES SECTION */}
+      <section className="max-w-7xl mx-auto px-6 pb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl font-bold text-white mb-4">
+            🚀 Mengapa Bergabung?
+          </h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Platform ini dirancang khusus untuk mendukung perkembangan mahasiswa Teknik Informatika
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            {
+              icon: "💡",
+              title: "Bagikan Pengetahuan",
+              description: "Bagikan pengalaman, tutorial, dan insight teknologi terbaru dengan komunitas"
+            },
+            {
+              icon: "👥",
+              title: "Bangun Jaringan",
+              description: "Terhubung dengan mahasiswa TI dari berbagai angkatan dan latar belakang"
+            },
+            {
+              icon: "🚀",
+              title: "Tingkatkan Skill",
+              description: "Dapatkan feedback dan inspirasi untuk mengembangkan kemampuan teknis Anda"
+            }
+          ].map((feature, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 + index * 0.1 }}
+              className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-all"
+            >
+              <div className="text-4xl mb-4">{feature.icon}</div>
+              <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                {feature.description}
+              </p>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-gray-800 text-center py-8 text-gray-500 text-sm mt-auto">
-        <p>© {new Date().getFullYear()} TI Gallery — Semua hak dilindungi.</p>
+      <footer className="border-t border-white/10 bg-black/50 backdrop-blur-xl py-12 mt-auto">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-8">
+            {/* Brand */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center">
+                  <span className="font-bold text-white text-lg">TI</span>
+                </div>
+                <span className="text-xl font-bold">GAMASTI</span>
+              </div>
+              <p className="text-gray-400 mb-6 max-w-md">
+                Platform kolaborasi dan berbagi pengetahuan untuk mahasiswa Teknik Informatika. 
+                Tempat untuk menunjukkan karya, berbagi ilmu, dan menginspirasi sesama.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Navigasi</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/" className="text-gray-400 hover:text-blue-400 transition-colors">
+                    Beranda
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="text-gray-400 hover:text-blue-400 transition-colors">
+                    Semua Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard" className="text-gray-400 hover:text-blue-400 transition-colors">
+                    Tulis Blog
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Stats */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Statistik</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li className="flex items-center gap-2">
+                  <FiBook className="text-blue-400" />
+                  <span>{blogs.length} Blog Publik</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <FiEye className="text-green-400" />
+                  <span>1 Pengunjung</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <FiCalendar className="text-purple-400" />
+                  <span>Aktif 2025</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 mt-8 pt-8 text-center text-gray-500 text-sm">
+            <p>© {new Date().getFullYear()} GAMASTI — Semua hak dilindungi.</p>
+          </div>
+        </div>
       </footer>
     </main>
   );
