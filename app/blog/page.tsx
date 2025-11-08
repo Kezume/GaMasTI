@@ -307,7 +307,7 @@ export default function BlogPage() {
                       </div>
                     )}
                   </div>
-                  // Di dalam card blog, tambahkan section untuk action buttons
+                  {/* // Di dalam card blog, tambahkan section untuk action buttons */}
                   <div className="mt-4 pt-4 border-t border-white/10">
                     <div className="flex items-center justify-between">
                       <Link
