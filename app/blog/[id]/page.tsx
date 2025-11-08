@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX } from "react-icons/fi";
+import DeleteBlogButton from "@/components/DeleteBlogButton";
 
 interface Blog {
   title: string;
@@ -14,6 +16,8 @@ interface Blog {
   images?: string[];
   authorName?: string;
   authorAvatar?: string;
+  authorId?: string;
+  authorEmail?: string;
   githubUrl?: string;
   createdAt?: { seconds: number };
 }
@@ -21,9 +25,14 @@ interface Blog {
 export default function BlogDetail() {
   const { id } = useParams();
   const router = useRouter();
+  const [user, userLoading] = useAuthState(auth);
   const [blog, setBlog] = useState<Blog | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -31,7 +40,17 @@ export default function BlogDetail() {
         const docRef = doc(db, "blogs", id as string);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setBlog(docSnap.data() as Blog);
+          const blogData = docSnap.data() as Blog;
+          // console.log("=== BLOG DETAIL DEBUG ===");
+          // console.log("Blog Data:", blogData);
+          // console.log("Blog Author ID:", blogData.authorId);
+          // console.log("Blog Author Email:", blogData.authorEmail);
+          // console.log("Current User UID:", user?.uid);
+          // console.log("Current User Email:", user?.email);
+          
+          setBlog(blogData);
+          setEditTitle(blogData.title);
+          setEditContent(blogData.content);
         } else {
           router.push("/404");
         }
@@ -42,8 +61,76 @@ export default function BlogDetail() {
         setLoading(false);
       }
     };
-    fetchBlog();
-  }, [id, router]);
+    
+    if (!userLoading) {
+      fetchBlog();
+    }
+  }, [id, router, userLoading]);
+
+  // Fungsi cek ownership yang lebih baik
+  const checkOwnership = () => {
+    if (!user || !blog) return false;
+
+    // console.log("=== CHECKING OWNERSHIP ===");
+    // console.log("User UID:", user.uid);
+    // console.log("Blog Author ID:", blog.authorId);
+    // console.log("User Email:", user.email);
+    // console.log("Blog Author Email:", blog.authorEmail);
+
+    // Cek berdasarkan UID
+    if (blog.authorId && user.uid === blog.authorId) {
+      console.log("✅ Ownership confirmed by UID");
+      return true;
+    }
+
+    // Fallback: cek berdasarkan email
+    if (blog.authorEmail && user.email && user.email === blog.authorEmail) {
+      console.log("✅ Ownership confirmed by Email");
+      return true;
+    }
+
+    console.log("❌ User is NOT the owner");
+    return false;
+  };
+
+  const isOwner = checkOwnership();
+
+  const handleUpdate = async () => {
+    if (!blog || !isOwner) {
+      alert("Anda tidak memiliki izin untuk mengedit blog ini.");
+      return;
+    }
+
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert("Judul dan konten tidak boleh kosong!");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const blogRef = doc(db, "blogs", id as string);
+      await updateDoc(blogRef, {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        updatedAt: new Date()
+      });
+
+      setBlog(prev => prev ? { ...prev, title: editTitle, content: editContent } : null);
+      setIsEditing(false);
+      alert("Blog berhasil diperbarui!");
+    } catch (error) {
+      console.error("Error updating blog:", error);
+      alert("Gagal memperbarui blog. Silakan coba lagi.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditTitle(blog?.title || "");
+    setEditContent(blog?.content || "");
+    setIsEditing(false);
+  };
 
   const formatDate = (seconds: number) => {
     return new Date(seconds * 1000).toLocaleDateString('id-ID', {
@@ -80,13 +167,16 @@ export default function BlogDetail() {
         console.log('Error sharing:', err);
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       alert('Link berhasil disalin ke clipboard!');
     }
   };
 
-  if (loading) {
+  const handleBlogDelete = () => {
+    router.push("/");
+  };
+
+  if (loading || userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
@@ -125,17 +215,69 @@ export default function BlogDetail() {
               <span>Kembali</span>
             </button>
             
-            <button
-              onClick={shareBlog}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl transition-all"
-            >
-              <FiShare2 className="text-sm" />
-              <span>Bagikan</span>
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Edit/Save Button - hanya untuk pemilik */}
+              {isOwner && (
+                <>
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={cancelEdit}
+                        disabled={updating}
+                        className="flex items-center gap-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 text-gray-400 hover:text-gray-300 px-4 py-2 rounded-xl transition-all duration-200"
+                      >
+                        <FiX className="text-sm" />
+                        <span>Batal</span>
+                      </button>
+                      <button
+                        onClick={handleUpdate}
+                        disabled={updating}
+                        className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 hover:text-green-300 px-4 py-2 rounded-xl transition-all duration-200"
+                      >
+                        {updating ? (
+                          <div className="w-4 h-4 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
+                        ) : (
+                          <FiSave className="text-sm" />
+                        )}
+                        <span>{updating ? 'Menyimpan...' : 'Simpan'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 hover:text-blue-300 px-4 py-2 rounded-xl transition-all duration-200"
+                    >
+                      <FiEdit3 className="text-sm" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                </>
+              )}
+              
+              {/* Delete Button - hanya untuk pemilik */}
+              {isOwner && blog.authorId && (
+                <DeleteBlogButton 
+                  blogId={id as string}
+                  authorId={blog.authorId}
+                  authorEmail={blog.authorEmail}
+                  blogTitle={blog.title}
+                  onDelete={handleBlogDelete}
+                />
+              )}
+              
+              <button
+                onClick={shareBlog}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl transition-all"
+              >
+                <FiShare2 className="text-sm" />
+                <span>Bagikan</span>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
+      {/* Konten artikel tetap sama */}
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
         <motion.article
           initial={{ opacity: 0, y: 20 }}
@@ -145,14 +287,29 @@ export default function BlogDetail() {
         >
           {/* Header */}
           <div className="p-8 border-b border-white/10">
-            <motion.h1 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl sm:text-4xl font-bold mb-6 leading-tight"
-            >
-              {blog.title}
-            </motion.h1>
+            {isEditing ? (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-black/30 border border-blue-500/50 rounded-xl px-4 py-3 text-2xl font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Judul blog..."
+                />
+                <div className="text-right text-sm text-gray-500">
+                  {editTitle.length}/100 karakter
+                </div>
+              </div>
+            ) : (
+              <motion.h1 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl sm:text-4xl font-bold mb-6 leading-tight"
+              >
+                {blog.title}
+              </motion.h1>
+            )}
 
             {/* Author & Meta Info */}
             <motion.div 
@@ -206,20 +363,35 @@ export default function BlogDetail() {
 
           {/* Content */}
           <div className="p-8">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="prose prose-invert max-w-none prose-lg"
-            >
-              <div className="whitespace-pre-line leading-relaxed text-gray-300 text-lg">
-                {blog.content.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-6">
-                    {paragraph}
-                  </p>
-                ))}
+            {isEditing ? (
+              <div className="space-y-4">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={15}
+                  className="w-full bg-black/30 border border-blue-500/50 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  placeholder="Tulis konten blog Anda di sini..."
+                />
+                <div className="text-right text-sm text-gray-500">
+                  {editContent.length}/5000 karakter
+                </div>
               </div>
-            </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="prose prose-invert max-w-none prose-lg"
+              >
+                <div className="whitespace-pre-line leading-relaxed text-gray-300 text-lg">
+                  {blog.content.split('\n').map((paragraph, index) => (
+                    <p key={index} className="mb-6">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             {/* Images Gallery */}
             {blog.images && blog.images.length > 0 && (
@@ -254,6 +426,17 @@ export default function BlogDetail() {
               </motion.div>
             )}
           </div>
+
+          {/* Owner Badge */}
+          {isOwner && (
+            <div className="px-8 pb-6">
+              <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
+                <p className="text-blue-400 text-sm text-center">
+                  🛠️ Anda adalah pemilik blog ini. Anda dapat mengedit atau menghapus blog ini.
+                </p>
+              </div>
+            </div>
+          )}
         </motion.article>
       </div>
 
@@ -275,7 +458,7 @@ export default function BlogDetail() {
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors"
             >
-              <FiArrowLeft className="text-xl" />
+              <FiX className="text-xl" />
             </button>
           </div>
         </motion.div>
