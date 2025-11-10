@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX, FiSettings } from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 
 interface Blog {
@@ -19,6 +19,7 @@ interface Blog {
   authorId?: string;
   authorEmail?: string;
   githubUrl?: string;
+  status?: string;
   createdAt?: { seconds: number };
 }
 
@@ -33,6 +34,25 @@ export default function BlogDetail() {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDocs(collection(db, "users"));
+          const userData = userDoc.docs.find(doc => doc.id === user.uid);
+          if (userData?.data()?.role === 'admin') {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Error checking admin:", error);
+        }
+      }
+    };
+    
+    checkAdmin();
+  }, [user]);
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -41,13 +61,6 @@ export default function BlogDetail() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const blogData = docSnap.data() as Blog;
-          // console.log("=== BLOG DETAIL DEBUG ===");
-          // console.log("Blog Data:", blogData);
-          // console.log("Blog Author ID:", blogData.authorId);
-          // console.log("Blog Author Email:", blogData.authorEmail);
-          // console.log("Current User UID:", user?.uid);
-          // console.log("Current User Email:", user?.email);
-          
           setBlog(blogData);
           setEditTitle(blogData.title);
           setEditContent(blogData.content);
@@ -67,33 +80,8 @@ export default function BlogDetail() {
     }
   }, [id, router, userLoading]);
 
-  // Fungsi cek ownership yang lebih baik
-  const checkOwnership = () => {
-    if (!user || !blog) return false;
-
-    // console.log("=== CHECKING OWNERSHIP ===");
-    // console.log("User UID:", user.uid);
-    // console.log("Blog Author ID:", blog.authorId);
-    // console.log("User Email:", user.email);
-    // console.log("Blog Author Email:", blog.authorEmail);
-
-    // Cek berdasarkan UID
-    if (blog.authorId && user.uid === blog.authorId) {
-      console.log("✅ Ownership confirmed by UID");
-      return true;
-    }
-
-    // Fallback: cek berdasarkan email
-    if (blog.authorEmail && user.email && user.email === blog.authorEmail) {
-      console.log("✅ Ownership confirmed by Email");
-      return true;
-    }
-
-    console.log("❌ User is NOT the owner");
-    return false;
-  };
-
-  const isOwner = checkOwnership();
+  // Fungsi cek ownership - owner atau admin bisa edit/hapus
+  const isOwner = user && blog && (user.uid === blog.authorId || isAdmin);
 
   const handleUpdate = async () => {
     if (!blog || !isOwner) {
@@ -216,7 +204,7 @@ export default function BlogDetail() {
             </button>
             
             <div className="flex items-center gap-3">
-              {/* Edit/Save Button - hanya untuk pemilik */}
+              {/* Edit/Save Button - hanya untuk pemilik atau admin */}
               {isOwner && (
                 <>
                   {isEditing ? (
@@ -254,7 +242,7 @@ export default function BlogDetail() {
                 </>
               )}
               
-              {/* Delete Button - hanya untuk pemilik */}
+              {/* Delete Button - hanya untuk pemilik atau admin */}
               {isOwner && blog.authorId && (
                 <DeleteBlogButton 
                   blogId={id as string}
@@ -263,6 +251,14 @@ export default function BlogDetail() {
                   blogTitle={blog.title}
                   onDelete={handleBlogDelete}
                 />
+              )}
+              
+              {/* Admin Badge */}
+              {isAdmin && (
+                <div className="flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-400 px-3 py-2 rounded-xl">
+                  <FiSettings className="text-sm" />
+                  <span className="text-sm">Admin</span>
+                </div>
               )}
               
               <button
@@ -277,7 +273,6 @@ export default function BlogDetail() {
         </div>
       </nav>
 
-      {/* Konten artikel tetap sama */}
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
         <motion.article
           initial={{ opacity: 0, y: 20 }}
@@ -359,6 +354,21 @@ export default function BlogDetail() {
                 )}
               </div>
             </motion.div>
+
+            {/* Status Badge */}
+            {blog.status && (
+              <div className="mt-4">
+                <span className={`px-3 py-1 rounded-full text-sm ${
+                  blog.status === 'published' 
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : blog.status === 'draft'
+                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                }`}>
+                  Status: {blog.status}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Content */}
@@ -427,12 +437,12 @@ export default function BlogDetail() {
             )}
           </div>
 
-          {/* Owner Badge */}
+          {/* Owner/Admin Badge */}
           {isOwner && (
             <div className="px-8 pb-6">
               <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
                 <p className="text-blue-400 text-sm text-center">
-                  🛠️ Anda adalah pemilik blog ini. Anda dapat mengedit atau menghapus blog ini.
+                  {isAdmin ? '🛠️ Anda adalah admin. Anda dapat mengedit atau menghapus blog ini.' : '🛠️ Anda adalah pemilik blog ini. Anda dapat mengedit atau menghapus blog ini.'}
                 </p>
               </div>
             </div>

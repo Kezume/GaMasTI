@@ -7,7 +7,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import AuthButton from "@/components/AuthButton";
-import { FiPlusCircle, FiGithub, FiCalendar, FiEye, FiTrendingUp, FiBook } from "react-icons/fi";
+import { FiPlusCircle, FiGithub, FiCalendar, FiEye, FiTrendingUp, FiBook, FiSettings } from "react-icons/fi";
 
 interface Blog {
   id: string;
@@ -16,27 +16,87 @@ interface Blog {
   images?: string[];
   authorName?: string;
   authorAvatar?: string;
+  authorId?: string;
   githubUrl?: string;
   createdAt?: { seconds: number };
+  status?: string;
 }
 
 export default function HomePage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDocs(collection(db, "users"));
+          const userData = userDoc.docs.find(doc => doc.id === user.uid);
+          if (userData?.data()?.role === 'admin') {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Error checking admin:", error);
+        }
+      }
+    };
+    
+    checkAdmin();
+  }, [user]);
 
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
+        console.log("Fetching blogs...");
+        
+        // Query sederhana tanpa where clause untuk menghindari index error
         const q = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
+        const allBlogs = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Blog[];
-        setBlogs(data);
+        
+        console.log("All blogs fetched:", allBlogs.length);
+        console.log("Blogs data:", allBlogs);
+        
+        // Filter manual di client side untuk published blogs
+        const publishedBlogs = allBlogs.filter(blog => {
+          // Include blogs with status 'published' or no status (legacy blogs)
+          const isPublished = blog.status === 'published' || !blog.status;
+          console.log(`Blog: ${blog.title}, Status: ${blog.status}, Published: ${isPublished}`);
+          return isPublished;
+        });
+        
+        console.log("Published blogs:", publishedBlogs.length);
+        setBlogs(publishedBlogs);
       } catch (error) {
         console.error("Error fetching blogs:", error);
+        
+        // Fallback: try without orderBy if still error
+        try {
+          console.log("Trying fallback query...");
+          const snapshot = await getDocs(collection(db, "blogs"));
+          const allBlogs = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Blog[];
+          
+          const publishedBlogs = allBlogs.filter(blog => 
+            blog.status === 'published' || !blog.status
+          ).sort((a, b) => {
+            // Manual sort by date
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+          });
+          
+          setBlogs(publishedBlogs);
+        } catch (fallbackError) {
+          console.error("Fallback error:", fallbackError);
+        }
       } finally {
         setLoading(false);
       }
@@ -45,6 +105,7 @@ export default function HomePage() {
   }, []);
 
   const formatDate = (seconds: number) => {
+    if (!seconds) return "Tanggal tidak tersedia";
     return new Date(seconds * 1000).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -57,7 +118,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
-      {/* NAVBAR DENGAN MENU BLOGS */}
+      {/* NAVBAR DENGAN MENU BLOGS & ADMIN */}
       <header className="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
@@ -73,7 +134,7 @@ export default function HomePage() {
           </Link>
 
           {/* NAVIGATION MENU */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             <Link 
               href="/" 
               className="text-white font-medium hover:text-blue-400 transition-colors"
@@ -87,6 +148,18 @@ export default function HomePage() {
               <FiBook className="text-lg group-hover:scale-110 transition-transform" />
               <span>Semua Blog</span>
             </Link>
+            
+            {/* ADMIN LINK - Hanya tampil untuk admin */}
+            {user && isAdmin && (
+              <Link 
+                href="/admin" 
+                className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-4 py-2 rounded-xl transition-all"
+              >
+                <FiSettings className="text-lg" />
+                <span>Admin</span>
+              </Link>
+            )}
+            
             {user && (
               <Link 
                 href="/dashboard" 
@@ -100,11 +173,20 @@ export default function HomePage() {
 
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
-            <div className="md:hidden">
+            <div className="md:hidden flex items-center gap-2">
+              {/* Admin Button Mobile */}
+              {user && isAdmin && (
+                <Link 
+                  href="/admin" 
+                  className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 p-2 rounded-xl transition-all"
+                >
+                  <FiSettings className="text-lg" />
+                </Link>
+              )}
               {user && (
                 <Link 
                   href="/dashboard" 
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-3 py-2 rounded-xl font-medium text-sm"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 p-2 rounded-xl font-medium text-sm"
                 >
                   <FiPlusCircle className="text-lg" />
                 </Link>
@@ -135,6 +217,18 @@ export default function HomePage() {
               </div>
               <span>Blog</span>
             </Link>
+            {/* Admin Mobile */}
+            {user && isAdmin && (
+              <Link 
+                href="/admin" 
+                className="flex flex-col items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-xs"
+              >
+                <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <FiSettings className="text-sm" />
+                </div>
+                <span>Admin</span>
+              </Link>
+            )}
             {user && (
               <Link 
                 href="/dashboard" 
@@ -283,7 +377,7 @@ export default function HomePage() {
             </div>
             <h3 className="text-2xl font-semibold text-gray-300 mb-3">Belum Ada Blog</h3>
             <p className="text-gray-500 max-w-md mx-auto mb-6">
-              Jadilah yang pertama membagikan pengetahuan dan karya Anda kepada komunitas
+              {user ? 'Mulai buat blog pertama Anda!' : 'Belum ada blog yang dipublikasikan.'}
             </p>
             {user && (
               <Link
@@ -377,7 +471,7 @@ export default function HomePage() {
                       {blog.createdAt && (
                         <div className="flex items-center gap-1 text-gray-500 text-xs">
                           <FiCalendar className="text-xs" />
-                          {formatDate(blog.createdAt.seconds)}
+                          <span>{formatDate(blog.createdAt.seconds)}</span>
                         </div>
                       )}
                     </div>
@@ -502,6 +596,13 @@ export default function HomePage() {
                     Tulis Blog
                   </Link>
                 </li>
+                {user && isAdmin && (
+                  <li>
+                    <Link href="/admin" className="text-purple-400 hover:text-purple-300 transition-colors">
+                      Admin Dashboard
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
 

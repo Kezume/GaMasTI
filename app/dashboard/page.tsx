@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiImage, FiUpload, FiX, FiFileText, FiType } from "react-icons/fi";
@@ -24,12 +24,8 @@ export default function DashboardPage() {
           <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <FiFileText className="text-2xl text-yellow-400" />
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">
-            Akses Dibatasi
-          </h3>
-          <p className="text-gray-400">
-            Silakan login terlebih dahulu untuk mengakses dashboard.
-          </p>
+          <h3 className="text-xl font-semibold text-white mb-2">Akses Dibatasi</h3>
+          <p className="text-gray-400">Silakan login terlebih dahulu untuk mengakses dashboard.</p>
         </div>
       </div>
     );
@@ -64,8 +60,7 @@ export default function DashboardPage() {
 
     setUploading(true);
     try {
-      const imageUrls =
-        images.length > 0 ? await uploadImagesToCloudinary() : [];
+      const imageUrls = images.length > 0 ? await uploadImagesToCloudinary() : [];
       const githubProfile = user.providerData.find(
         (p) => p.providerId === "github.com"
       );
@@ -75,33 +70,32 @@ export default function DashboardPage() {
         user.displayName ||
         "";
 
-      // Di dalam handleSubmit function, sebelum addDoc
-    //   console.log("=== DEBUG DASHBOARD ===");
-    //   console.log("User object:", user);
-    //   console.log("User UID:", user?.uid);
-    //   console.log("User Email:", user?.email);
-    //   console.log("User Display Name:", user?.displayName);
-    //   console.log("User Photo URL:", user?.photoURL);
+      // Simpan/update user data terlebih dahulu
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
+        email: user.email,
+        displayName: user.displayName || "Anonim",
+        photoURL: user.photoURL || "/default-avatar.png",
+        role: 'user', // Default role
+        lastLogin: new Date(),
+        createdAt: serverTimestamp()
+      }, { merge: true });
 
-    //   console.log("GitHub Profile:", githubProfile);
-    //   console.log("GitHub Username:", githubUsername);
-
-      // Data yang akan disimpan
-      const blogData = {
+      // Buat blog
+      await addDoc(collection(db, "blogs"), {
         title: title.trim(),
         content: content.trim(),
         images: imageUrls,
-        authorName: user?.displayName || "Anonim",
-        authorAvatar: user?.photoURL || "/default-avatar.png",
-        authorId: user?.uid || "unknown", // Pastikan ini ada
-        authorEmail: user?.email || "", // Simpan email juga
-        githubUrl: githubUsername ? `https://github.com/${githubUsername}` : "",
+        authorName: user.displayName || "Anonim",
+        authorAvatar: user.photoURL || "/default-avatar.png",
+        authorId: user.uid,
+        authorEmail: user.email || "",
+        status: 'published', // Default status published
+        githubUrl: githubUsername
+          ? `https://github.com/${githubUsername}`
+          : "",
         createdAt: serverTimestamp(),
-      };
-
-      console.log("Data yang akan disimpan:", blogData);
-
-      await addDoc(collection(db, "blogs"), blogData);
+      });
 
       alert("Blog berhasil dipublikasikan!");
       router.push("/");
@@ -116,7 +110,7 @@ export default function DashboardPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-
+    
     // Validasi jumlah file
     if (images.length + files.length > 6) {
       alert("Maksimal 6 gambar yang dapat diunggah");
@@ -124,7 +118,7 @@ export default function DashboardPage() {
     }
 
     // Validasi ukuran file (max 5MB)
-    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       alert("Beberapa file melebihi ukuran maksimal 5MB");
       return;
@@ -155,8 +149,7 @@ export default function DashboardPage() {
             Buat Blog Baru
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Bagikan pengetahuan, pengalaman, dan karya terbaik Anda dengan
-            komunitas
+            Bagikan pengetahuan, pengalaman, dan karya terbaik Anda dengan komunitas
           </p>
         </motion.div>
 
@@ -224,12 +217,10 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <FiImage className="text-purple-400" />
                     Gambar Pendukung
-                    <span className="text-xs text-gray-500">
-                      (Opsional, maks. 6 file)
-                    </span>
+                    <span className="text-xs text-gray-500">(Opsional, maks. 6 file)</span>
                   </div>
                 </label>
-
+                
                 <div className="flex items-center gap-3 mb-4">
                   <label className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-purple-500/25">
                     <FiImage className="text-lg" />
@@ -242,7 +233,7 @@ export default function DashboardPage() {
                       className="hidden"
                     />
                   </label>
-
+                  
                   {images.length > 0 && (
                     <button
                       type="button"
@@ -343,7 +334,7 @@ export default function DashboardPage() {
                       <span>{user.displayName || "Anonim"}</span>
                     </div>
                     <span>•</span>
-                    <span>{new Date().toLocaleDateString("id-ID")}</span>
+                    <span>{new Date().toLocaleDateString('id-ID')}</span>
                   </div>
                 </div>
 
@@ -371,12 +362,9 @@ export default function DashboardPage() {
                 <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiFileText className="text-2xl text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-300 mb-2">
-                  Preview Belum Tersedia
-                </h3>
+                <h3 className="text-lg font-medium text-gray-300 mb-2">Preview Belum Tersedia</h3>
                 <p className="text-gray-500 text-sm">
-                  Mulai menulis di form sebelah kiri untuk melihat preview blog
-                  di sini
+                  Mulai menulis di form sebelah kiri untuk melihat preview blog di sini
                 </p>
               </div>
             )}

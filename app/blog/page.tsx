@@ -1,3 +1,4 @@
+// app/blog/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,6 +15,9 @@ import {
   FiFilter,
   FiBook,
   FiUser,
+  FiHome,
+  FiPlus,
+  FiEye
 } from "react-icons/fi";
 
 interface Blog {
@@ -114,7 +118,7 @@ export default function BlogPage() {
           <p className="text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-xl font-medium transition-colors"
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-6 py-3 rounded-xl font-medium transition-all shadow-lg"
           >
             Refresh Halaman
           </button>
@@ -126,133 +130,211 @@ export default function BlogPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white px-4 py-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Enhanced Header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-16 relative"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-              Semua Blog
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl rounded-full transform scale-150"></div>
+          <h1 className="text-5xl sm:text-6xl font-bold mb-6 relative">
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent animate-gradient">
+              Blog Space
             </span>
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Jelajahi semua karya dan artikel inspiratif dari mahasiswa Teknik
-            Informatika
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            Jelajahi dunia pengetahuan dan inspirasi dari mahasiswa Teknik Informatika. 
+            <span className="block text-cyan-400 font-medium mt-2">
+              Temukan, Pelajari, dan Berbagi!
+            </span>
           </p>
+          
+          {/* Quick Actions */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-wrap items-center justify-center gap-4 mt-8"
+          >
+            <Link
+              href="/"
+              className="flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-3 rounded-2xl font-medium backdrop-blur-sm transition-all hover:scale-105 group"
+            >
+              <FiHome className="text-lg group-hover:text-cyan-400 transition-colors" />
+              <span>Beranda</span>
+            </Link>
+            
+            {user && (
+              <Link
+                href="/blog/create"
+                className="flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-3 rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-green-500/25"
+              >
+                <FiPlus className="text-lg" />
+                <span>Buat Blog Baru</span>
+              </Link>
+            )}
+          </motion.div>
         </motion.div>
 
-        {/* Search and Filter */}
+        {/* Enhanced Search Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8"
+          transition={{ delay: 0.4 }}
+          className="mb-12"
         >
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="relative flex-1 max-w-2xl">
-              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari blog berdasarkan judul, konten, atau penulis..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-500"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <FiFilter className="text-lg" />
-              <span>{filteredBlogs.length} blog ditemukan</span>
+          <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 shadow-2xl">
+            <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+              <div className="flex-1 w-full">
+                <div className="relative">
+                  <FiSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-cyan-400 text-xl" />
+                  <input
+                    type="text"
+                    placeholder="Cari blog berdasarkan judul, konten, atau penulis..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-black/30 border border-cyan-500/30 rounded-2xl pl-14 pr-6 py-4 text-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all placeholder-gray-400 backdrop-blur-sm"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-black/30 px-4 py-3 rounded-2xl border border-cyan-500/20">
+                  <FiFilter className="text-cyan-400 text-lg" />
+                  <span className="text-gray-300 font-medium">
+                    {filteredBlogs.length} Blog Ditemukan
+                  </span>
+                </div>
+                
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white/5 rounded-2xl p-6 animate-pulse">
-                <div className="h-48 bg-gray-700 rounded-xl mb-4"></div>
-                <div className="h-4 bg-gray-700 rounded mb-2"></div>
-                <div className="h-4 bg-gray-700 rounded mb-2 w-3/4"></div>
-                <div className="h-3 bg-gray-700 rounded mb-4 w-1/2"></div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-700 rounded-full"></div>
-                  <div className="h-3 bg-gray-700 rounded w-20"></div>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6 animate-pulse"
+              >
+                <div className="h-48 bg-gradient-to-br from-gray-700 to-gray-800 rounded-2xl mb-4"></div>
+                <div className="h-6 bg-gray-700 rounded-lg mb-3"></div>
+                <div className="h-4 bg-gray-700 rounded-lg mb-2"></div>
+                <div className="h-4 bg-gray-700 rounded-lg mb-4 w-3/4"></div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-700 rounded w-20"></div>
+                      <div className="h-2 bg-gray-700 rounded w-16"></div>
+                    </div>
+                  </div>
+                  <div className="h-3 bg-gray-700 rounded w-16"></div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : filteredBlogs.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-20"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-20 bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl"
           >
-            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
-              <FiSearch className="text-3xl text-gray-400" />
+            <div className="w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-cyan-500/30">
+              <FiSearch className="text-4xl text-cyan-400" />
             </div>
-            <h3 className="text-2xl font-semibold text-gray-300 mb-3">
-              {searchTerm ? "Blog Tidak Ditemukan" : "Belum Ada Blog"}
+            <h3 className="text-3xl font-bold text-gray-200 mb-4">
+              {searchTerm ? "Tidak Ada Hasil" : "Belum Ada Blog"}
             </h3>
-            <p className="text-gray-500 max-w-md mx-auto mb-6">
+            <p className="text-gray-400 text-lg max-w-md mx-auto mb-8 leading-relaxed">
               {searchTerm
-                ? `Tidak ada hasil untuk "${searchTerm}". Coba dengan kata kunci lain.`
-                : "Jadilah yang pertama membagikan pengetahuan dan karya Anda kepada komunitas."}
+                ? `Maaf, tidak ada blog yang cocok dengan "${searchTerm}". Coba kata kunci lain atau lihat semua blog.`
+                : "Jadilah yang pertama membagikan pengetahuan dan inspirasi kepada komunitas!"}
             </p>
-            {user && !searchTerm && (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-xl font-medium transition-colors"
-              >
-                <FiBook className="text-lg" />
-                Buat Blog Pertama
-              </Link>
-            )}
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                Tampilkan semua blog
-              </button>
-            )}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {user && !searchTerm && (
+                <Link
+                  href="/blog/create"
+                  className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-green-500/25"
+                >
+                  <FiPlus className="text-xl" />
+                  Buat Blog Pertama
+                </Link>
+              )}
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="inline-flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 px-8 py-4 rounded-2xl font-semibold transition-all"
+                >
+                  Tampilkan Semua Blog
+                </button>
+              )}
+            </div>
           </motion.div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            transition={{ delay: 0.5 }}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
           >
             {filteredBlogs.map((blog, i) => (
               <motion.article
                 key={blog.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:-translate-y-2"
+                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  delay: i * 0.1,
+                  type: "spring",
+                  stiffness: 100 
+                }}
+                whileHover={{ 
+                  y: -8,
+                  transition: { duration: 0.3 }
+                }}
+                className="group bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/20 transition-all duration-500 relative"
               >
+                {/* Glow Effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
                 {/* Image */}
                 {blog.images && blog.images.length > 0 ? (
                   <Link href={`/blog/${blog.id}`}>
-                    <div className="relative h-48 overflow-hidden">
+                    <div className="relative h-52 overflow-hidden">
                       <img
                         src={blog.images[0]}
                         alt={blog.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      <div className="absolute top-4 right-4">
+                        <span className="bg-cyan-500/90 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
+                          <FiEye className="inline mr-1" />
+                          Baca
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 ) : (
                   <Link href={`/blog/${blog.id}`}>
-                    <div className="h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10"></div>
+                    <div className="h-52 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all duration-500"></div>
                       <div className="text-center z-10">
-                        <FiBook className="text-3xl text-gray-600 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm italic">
-                          Tidak ada gambar
+                        <FiBook className="text-4xl text-cyan-400 mx-auto mb-3 group-hover:scale-110 transition-transform duration-300" />
+                        <p className="text-cyan-300 text-sm font-medium italic">
+                          Jelajahi Konten Spesial
                         </p>
                       </div>
                     </div>
@@ -260,25 +342,27 @@ export default function BlogPage() {
                 )}
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-6 relative z-10">
                   <Link href={`/blog/${blog.id}`}>
-                    <h3 className="font-bold text-lg mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
+                    <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-cyan-400 transition-colors duration-300 leading-tight bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                       {blog.title}
                     </h3>
                   </Link>
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-3 leading-relaxed">
+                  
+                  <p className="text-gray-300 text-sm mb-6 line-clamp-3 leading-relaxed">
                     {blog.content}
                   </p>
+
                   {/* Author Info */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <img
                         src={blog.authorAvatar}
                         alt={blog.authorName}
-                        className="w-8 h-8 rounded-full border-2 border-white/20"
+                        className="w-10 h-10 rounded-full border-2 border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-300"
                       />
                       <div>
-                        <p className="font-medium text-white text-sm">
+                        <p className="font-semibold text-white text-sm">
                           {blog.authorName}
                         </p>
                         {blog.githubUrl ? (
@@ -286,7 +370,7 @@ export default function BlogPage() {
                             href={blog.githubUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors text-xs"
+                            className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs"
                           >
                             <FiGithub className="text-xs" />
                             GitHub
@@ -301,40 +385,40 @@ export default function BlogPage() {
                     </div>
 
                     {blog.createdAt && (
-                      <div className="flex items-center gap-1 text-gray-500 text-xs">
+                      <div className="flex items-center gap-2 text-cyan-400 text-xs bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
                         <FiCalendar className="text-xs" />
                         <span>{formatDate(blog.createdAt.seconds)}</span>
                       </div>
                     )}
                   </div>
-                  {/* // Di dalam card blog, tambahkan section untuk action buttons */}
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/blog/${blog.id}`}
-                        className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
-                      >
-                        Baca Selengkapnya →
-                      </Link>
 
-                      {/* Action Buttons untuk pemilik */}
-                      {blog.authorId && user && user.uid === blog.authorId && (
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/blog/${blog.id}`}
-                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
-                          >
-                            Edit
-                          </Link>
-                          <span className="text-gray-600">•</span>
-                          <DeleteBlogButton
-                            blogId={blog.id}
-                            authorId={blog.authorId}
-                            blogTitle={blog.title}
-                          />
-                        </div>
-                      )}
-                    </div>
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                    <Link
+                      href={`/blog/${blog.id}`}
+                      className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-semibold text-sm transition-all group/read"
+                    >
+                      <span>Baca Lengkap</span>
+                      <FiEye className="group-hover/read:translate-x-1 transition-transform duration-300" />
+                    </Link>
+
+                    {/* Action Buttons untuk pemilik */}
+                    {blog.authorId && user && user.uid === blog.authorId && (
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/blog/edit/${blog.id}`}
+                          className="text-green-400 hover:text-green-300 text-sm transition-colors"
+                        >
+                          Edit
+                        </Link>
+                        <span className="text-gray-600">•</span>
+                        <DeleteBlogButton
+                          blogId={blog.id}
+                          authorId={blog.authorId}
+                          blogTitle={blog.title}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.article>
@@ -342,18 +426,19 @@ export default function BlogPage() {
           </motion.div>
         )}
 
-        {/* Back to Home */}
+        {/* Enhanced Back to Home */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="text-center mt-12"
+          transition={{ delay: 0.7 }}
+          className="text-center mt-16"
         >
           <Link
             href="/"
-            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-3 rounded-xl font-medium backdrop-blur-sm transition-all"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-purple-500/25 hover:scale-105"
           >
-            ← Kembali ke Beranda
+            <FiHome className="text-xl" />
+            <span>Kembali ke Menu Utama</span>
           </Link>
         </motion.div>
       </div>

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { db } from "@/lib/firebase";
-import { doc, deleteDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { doc, deleteDoc, getDocs, collection } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiTrash2, FiX, FiAlertTriangle } from "react-icons/fi";
 
@@ -28,33 +27,36 @@ export default function DeleteBlogButton({
   const [deleting, setDeleting] = useState(false);
 
   // Fungsi cek ownership yang lebih robust
-  const isOwner = () => {
+  const isOwner = async () => {
     if (!user) return false;
     
-    console.log("=== DELETE BUTTON OWNERSHIP CHECK ===");
-    console.log("User UID:", user.uid);
-    console.log("Blog Author ID:", authorId);
-    console.log("User Email:", user.email);
-    console.log("Blog Author Email:", authorEmail);
-
     // Cek berdasarkan UID
     if (authorId && user.uid === authorId) {
-      console.log("✅ Delete allowed - UID match");
       return true;
     }
 
     // Fallback: cek berdasarkan email
     if (authorEmail && user.email && user.email === authorEmail) {
-      console.log("✅ Delete allowed - Email match");
       return true;
     }
 
-    console.log("❌ Delete not allowed - No ownership");
+    // Cek jika user adalah admin
+    try {
+      const userDoc = await getDocs(collection(db, "users"));
+      const userData = userDoc.docs.find(doc => doc.id === user.uid);
+      if (userData?.data()?.role === 'admin') {
+        return true;
+      }
+    } catch (error) {
+      console.error("Error checking admin:", error);
+    }
+
     return false;
   };
 
   const handleDelete = async () => {
-    if (!user || !isOwner()) {
+    const hasPermission = await isOwner();
+    if (!user || !hasPermission) {
       alert("Anda tidak memiliki izin untuk menghapus blog ini.");
       return;
     }
@@ -77,10 +79,7 @@ export default function DeleteBlogButton({
     }
   };
 
-  if (!isOwner()) {
-    console.log("❌ Delete button not rendered - User is not owner");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <>
