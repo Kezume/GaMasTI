@@ -1,4 +1,4 @@
-// app/blog/page.tsx - UPDATE DENGAN YOUTUBE BADGE
+// app/blog/page.tsx - PERBAIKAN TOMBUL BUAT BLOG BARU
 "use client";
 
 import { useEffect, useState } from "react";
@@ -18,21 +18,23 @@ import {
   FiHome,
   FiPlus,
   FiEye,
-  FiYoutube // Tambahkan ini
+  FiYoutube,
+  FiImage
 } from "react-icons/fi";
 
-// Interface Blog langsung di sini
+// Interface Blog
 interface Blog {
   id: string;
   title: string;
   content: string;
   images?: string[];
-  youtubeUrls?: string[]; // Tambahkan ini
+  youtubeUrls?: string[];
   authorName: string;
   authorAvatar: string;
   authorId?: string;
   githubUrl?: string;
   createdAt?: { seconds: number };
+  status?: string;
 }
 
 export default function BlogPage() {
@@ -41,7 +43,7 @@ export default function BlogPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user] = useAuthState(auth);
+  const [user, userLoading] = useAuthState(auth);
 
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -63,20 +65,46 @@ export default function BlogPage() {
             title: data.title || "Judul Tidak Tersedia",
             content: data.content || "Konten tidak tersedia",
             images: data.images || [],
-            youtubeUrls: data.youtubeUrls || [], // Tambahkan ini
+            youtubeUrls: data.youtubeUrls || [],
             authorName: data.authorName || "Anonim",
             authorAvatar: data.authorAvatar || "/default-avatar.png",
             authorId: data.authorId || "",
             githubUrl: data.githubUrl || "",
+            status: data.status || "published",
             createdAt: data.createdAt,
           };
         }) as Blog[];
 
-        setBlogs(blogsData);
-        setFilteredBlogs(blogsData);
+        const publishedBlogs = blogsData.filter(blog => 
+          blog.status === 'published' || !blog.status
+        );
+
+        setBlogs(publishedBlogs);
+        setFilteredBlogs(publishedBlogs);
       } catch (error) {
         console.error("Error fetching blogs:", error);
         setError("Gagal memuat blog. Silakan refresh halaman.");
+        
+        try {
+          const snapshot = await getDocs(collection(db, "blogs"));
+          const allBlogs = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Blog[];
+          
+          const publishedBlogs = allBlogs.filter(blog => 
+            blog.status === 'published' || !blog.status
+          ).sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+          });
+          
+          setBlogs(publishedBlogs);
+          setFilteredBlogs(publishedBlogs);
+        } catch (fallbackError) {
+          console.error("Fallback error:", fallbackError);
+        }
       } finally {
         setLoading(false);
       }
@@ -101,7 +129,6 @@ export default function BlogPage() {
 
   const formatDate = (seconds: number) => {
     if (!seconds) return "Tanggal tidak tersedia";
-
     return new Date(seconds * 1000).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
@@ -153,7 +180,7 @@ export default function BlogPage() {
             </span>
           </p>
           
-          {/* Quick Actions */}
+          {/* Quick Actions - PERBAIKAN TOMBOL */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -162,19 +189,29 @@ export default function BlogPage() {
           >
             <Link
               href="/"
-              className="flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-3 rounded-2xl font-medium backdrop-blur-sm transition-all hover:scale-105 group"
+              className="flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-3 rounded-2xl font-medium backdrop-blur-sm transition-all hover:scale-105 group relative z-10"
             >
               <FiHome className="text-lg group-hover:text-cyan-400 transition-colors" />
               <span>Beranda</span>
             </Link>
             
-            {user && (
+            {!userLoading && user && (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-3 rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-green-500/25"
+                className="flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-3 rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-green-500/25 relative z-10 active:scale-95"
               >
                 <FiPlus className="text-lg" />
                 <span>Buat Blog Baru</span>
+              </Link>
+            )}
+
+            {!userLoading && !user && (
+              <Link
+                href="/auth/login"
+                className="flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 px-6 py-3 rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-amber-500/25 relative z-10"
+              >
+                <FiPlus className="text-lg" />
+                <span>Login untuk Buat Blog</span>
               </Link>
             )}
           </motion.div>
@@ -224,28 +261,28 @@ export default function BlogPage() {
         </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6 animate-pulse"
+                className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-5 animate-pulse"
               >
-                <div className="h-48 bg-gradient-to-br from-gray-700 to-gray-800 rounded-2xl mb-4"></div>
-                <div className="h-6 bg-gray-700 rounded-lg mb-3"></div>
-                <div className="h-4 bg-gray-700 rounded-lg mb-2"></div>
-                <div className="h-4 bg-gray-700 rounded-lg mb-4 w-3/4"></div>
+                <div className="h-40 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl mb-4"></div>
+                <div className="h-5 bg-gray-700 rounded-lg mb-3"></div>
+                <div className="h-3 bg-gray-700 rounded-lg mb-2"></div>
+                <div className="h-3 bg-gray-700 rounded-lg mb-4 w-3/4"></div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-gray-700 rounded w-20"></div>
-                      <div className="h-2 bg-gray-700 rounded w-16"></div>
+                    <div className="w-8 h-8 bg-gray-700 rounded-full"></div>
+                    <div className="space-y-1">
+                      <div className="h-3 bg-gray-700 rounded w-16"></div>
+                      <div className="h-2 bg-gray-700 rounded w-12"></div>
                     </div>
                   </div>
-                  <div className="h-3 bg-gray-700 rounded w-16"></div>
+                  <div className="h-3 bg-gray-700 rounded w-14"></div>
                 </div>
               </motion.div>
             ))}
@@ -268,13 +305,22 @@ export default function BlogPage() {
                 : "Jadilah yang pertama membagikan pengetahuan dan inspirasi kepada komunitas!"}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {user && !searchTerm && (
+              {!userLoading && user && !searchTerm && (
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-green-500/25"
+                  className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-green-500/25 relative z-10"
                 >
                   <FiPlus className="text-xl" />
                   Buat Blog Pertama
+                </Link>
+              )}
+              {!userLoading && !user && !searchTerm && (
+                <Link
+                  href="/auth/login"
+                  className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-amber-500/25"
+                >
+                  <FiPlus className="text-xl" />
+                  Login untuk Mulai Menulis
                 </Link>
               )}
               {searchTerm && (
@@ -292,12 +338,12 @@ export default function BlogPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
           >
             {filteredBlogs.map((blog, i) => (
               <motion.article
                 key={blog.id}
-                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ 
                   delay: i * 0.1,
@@ -305,86 +351,82 @@ export default function BlogPage() {
                   stiffness: 100 
                 }}
                 whileHover={{ 
-                  y: -8,
-                  transition: { duration: 0.3 }
+                  y: -4,
+                  scale: 1.02,
+                  transition: { duration: 0.2 }
                 }}
-                className="group bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/20 transition-all duration-500 relative"
+                className="group bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden shadow-xl hover:shadow-cyan-500/15 transition-all duration-300 relative"
               >
                 {/* Glow Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
                 {/* Image */}
                 {blog.images && blog.images.length > 0 ? (
-                  <Link href={`/blog/${blog.id}`}>
-                    <div className="relative h-52 overflow-hidden">
-                      <img
-                        src={blog.images[0]}
-                        alt={blog.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                      
-                      {/* YouTube Badge */}
-                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                        <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                          <FiYoutube className="text-xs" />
-                          <span>{blog.youtubeUrls.length}</span>
-                        </div>
-                      )}
-                      
-                      <div className="absolute top-4 right-4">
-                        <span className="bg-cyan-500/90 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
-                          <FiEye className="inline mr-1" />
-                          Baca
-                        </span>
+                  <Link href={`/blog/${blog.id}`} className="block relative h-40 overflow-hidden">
+                    <img
+                      src={blog.images[0]}
+                      alt={blog.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    
+                    {/* YouTube Badge */}
+                    {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 backdrop-blur-sm">
+                        <FiYoutube className="text-xs" />
+                        <span className="text-xs">{blog.youtubeUrls.length}</span>
                       </div>
+                    )}
+                    
+                    <div className="absolute top-3 right-3">
+                      <span className="bg-cyan-500/90 text-white px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                        <FiEye className="inline mr-1 text-xs" />
+                        Baca
+                      </span>
                     </div>
                   </Link>
                 ) : (
-                  <Link href={`/blog/${blog.id}`}>
-                    <div className="h-52 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all duration-500"></div>
-                      
-                      {/* YouTube Badge */}
-                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                        <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 z-20">
-                          <FiYoutube className="text-xs" />
-                          <span>{blog.youtubeUrls.length}</span>
-                        </div>
-                      )}
-                      
-                      <div className="text-center z-10">
-                        <FiBook className="text-4xl text-cyan-400 mx-auto mb-3 group-hover:scale-110 transition-transform duration-300" />
-                        <p className="text-cyan-300 text-sm font-medium italic">
-                          Jelajahi Konten Spesial
-                        </p>
+                  <Link href={`/blog/${blog.id}`} className="block h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300"></div>
+                    
+                    {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 z-20 backdrop-blur-sm">
+                        <FiYoutube className="text-xs" />
+                        <span className="text-xs">{blog.youtubeUrls.length}</span>
                       </div>
+                    )}
+                    
+                    <div className="text-center z-10">
+                      <FiBook className="text-2xl text-cyan-400 mx-auto mb-2 group-hover:scale-110 transition-transform duration-300" />
+                      <p className="text-cyan-300 text-xs font-medium italic">
+                        Jelajahi Konten
+                      </p>
                     </div>
                   </Link>
                 )}
 
                 {/* Content */}
-                <div className="p-6 relative z-10">
+                <div className="p-5 relative z-10">
                   <Link href={`/blog/${blog.id}`}>
-                    <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-cyan-400 transition-colors duration-300 leading-tight bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                    <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors duration-200 leading-tight">
                       {blog.title}
                     </h3>
                   </Link>
                   
-                  <p className="text-gray-300 text-sm mb-6 line-clamp-3 leading-relaxed">
+                  <p className="text-gray-300 text-sm mb-4 line-clamp-2 leading-relaxed">
                     {blog.content}
                   </p>
 
                   {/* Author Info */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
                       <img
                         src={blog.authorAvatar}
                         alt={blog.authorName}
-                        className="w-10 h-10 rounded-full border-2 border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-300"
+                        className="w-8 h-8 rounded-full border border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-200"
                       />
                       <div>
-                        <p className="font-semibold text-white text-sm">
+                        <p className="font-semibold text-white text-xs">
                           {blog.authorName}
                         </p>
                         {blog.githubUrl ? (
@@ -395,45 +437,45 @@ export default function BlogPage() {
                             className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs"
                           >
                             <FiGithub className="text-xs" />
-                            GitHub
+                            <span className="text-xs">GitHub</span>
                           </a>
                         ) : (
                           <div className="flex items-center gap-1 text-gray-500 text-xs">
                             <FiUser className="text-xs" />
-                            <span>Anonim</span>
+                            <span className="text-xs">Anonim</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {blog.createdAt && (
-                      <div className="flex items-center gap-2 text-cyan-400 text-xs bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                      <div className="flex items-center gap-1 text-cyan-400 text-xs bg-cyan-500/10 px-2 py-1 rounded-full border border-cyan-500/20">
                         <FiCalendar className="text-xs" />
-                        <span>{formatDate(blog.createdAt.seconds)}</span>
+                        <span className="text-xs">{formatDate(blog.createdAt.seconds)}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
                     <Link
                       href={`/blog/${blog.id}`}
-                      className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-semibold text-sm transition-all group/read"
+                      className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-all group/read"
                     >
                       <span>Baca Lengkap</span>
-                      <FiEye className="group-hover/read:translate-x-1 transition-transform duration-300" />
+                      <FiEye className="group-hover/read:translate-x-0.5 transition-transform duration-200 text-xs" />
                     </Link>
 
                     {/* Action Buttons untuk pemilik */}
                     {blog.authorId && user && user.uid === blog.authorId && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Link
                           href={`/blog/edit/${blog.id}`}
-                          className="text-green-400 hover:text-green-300 text-sm transition-colors"
+                          className="text-green-400 hover:text-green-300 text-xs transition-colors"
                         >
                           Edit
                         </Link>
-                        <span className="text-gray-600">•</span>
+                        <span className="text-gray-600 text-xs">•</span>
                         <DeleteBlogButton
                           blogId={blog.id}
                           authorId={blog.authorId}
@@ -457,7 +499,7 @@ export default function BlogPage() {
         >
           <Link
             href="/"
-            className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-purple-500/25 hover:scale-105"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-purple-500/25 hover:scale-105 relative z-10"
           >
             <FiHome className="text-xl" />
             <span>Kembali ke Menu Utama</span>
