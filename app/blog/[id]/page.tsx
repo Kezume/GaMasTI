@@ -7,13 +7,28 @@ import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX, FiSettings } from "react-icons/fi";
+import { 
+  FiArrowLeft, 
+  FiCalendar, 
+  FiGithub, 
+  FiShare2, 
+  FiClock, 
+  FiEdit3, 
+  FiSave, 
+  FiX, 
+  FiSettings,
+  FiYoutube,
+  FiPlay,
+  FiImage
+} from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
+import YouTubeEmbed from "@/components/YoutubeEmbed";
 
 interface Blog {
   title: string;
   content: string;
   images?: string[];
+  youtubeUrls?: string[]; // TAMBAHKAN INI
   authorName?: string;
   authorAvatar?: string;
   authorId?: string;
@@ -355,9 +370,10 @@ export default function BlogDetail() {
               </div>
             </motion.div>
 
-            {/* Status Badge */}
-            {blog.status && (
-              <div className="mt-4">
+            {/* Status & Media Badges */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {/* Status Badge */}
+              {blog.status && (
                 <span className={`px-3 py-1 rounded-full text-sm ${
                   blog.status === 'published' 
                     ? 'bg-green-500/20 text-green-400 border border-green-500/30'
@@ -367,12 +383,52 @@ export default function BlogDetail() {
                 }`}>
                   Status: {blog.status}
                 </span>
-              </div>
-            )}
+              )}
+
+              {/* YouTube Badge */}
+              {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-red-500/20 text-red-400 border border-red-500/30">
+                  <FiYoutube className="text-sm" />
+                  <span>{blog.youtubeUrls.length} Video</span>
+                </span>
+              )}
+
+              {/* Images Badge */}
+              {blog.images && blog.images.length > 0 && (
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  <FiImage className="text-sm" />
+                  <span>{blog.images.length} Gambar</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Content */}
           <div className="p-8">
+            {/* YouTube Videos Section */}
+            {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mb-12"
+              >
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <FiYoutube className="text-red-500" />
+                  Video YouTube
+                </h2>
+                <div className="space-y-6">
+                  {blog.youtubeUrls.map((url, index) => (
+                    <YouTubeEmbed
+                      key={index}
+                      url={url}
+                      title={`${blog.title} - Video ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </motion.section>
+            )}
+
             {isEditing ? (
               <div className="space-y-4">
                 <textarea
@@ -390,7 +446,7 @@ export default function BlogDetail() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.5 }}
                 className="prose prose-invert max-w-none prose-lg"
               >
                 <div className="whitespace-pre-line leading-relaxed text-gray-300 text-lg">
@@ -411,7 +467,10 @@ export default function BlogDetail() {
                 transition={{ delay: 0.6 }}
                 className="mt-12"
               >
-                <h3 className="text-2xl font-bold mb-6">Galeri Gambar</h3>
+                <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <FiImage className="text-purple-400" />
+                  Galeri Gambar
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {blog.images.map((img, i) => (
                     <motion.div

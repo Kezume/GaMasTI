@@ -1,4 +1,4 @@
-// app/blog/page.tsx
+// app/blog/page.tsx - UPDATE DENGAN YOUTUBE BADGE
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,14 +17,17 @@ import {
   FiUser,
   FiHome,
   FiPlus,
-  FiEye
+  FiEye,
+  FiYoutube // Tambahkan ini
 } from "react-icons/fi";
 
+// Interface Blog langsung di sini
 interface Blog {
   id: string;
   title: string;
   content: string;
   images?: string[];
+  youtubeUrls?: string[]; // Tambahkan ini
   authorName: string;
   authorAvatar: string;
   authorId?: string;
@@ -60,6 +63,7 @@ export default function BlogPage() {
             title: data.title || "Judul Tidak Tersedia",
             content: data.content || "Konten tidak tersedia",
             images: data.images || [],
+            youtubeUrls: data.youtubeUrls || [], // Tambahkan ini
             authorName: data.authorName || "Anonim",
             authorAvatar: data.authorAvatar || "/default-avatar.png",
             authorId: data.authorId || "",
@@ -166,7 +170,7 @@ export default function BlogPage() {
             
             {user && (
               <Link
-                href="/blog/create"
+                href="/dashboard"
                 className="flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-3 rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-green-500/25"
               >
                 <FiPlus className="text-lg" />
@@ -266,7 +270,7 @@ export default function BlogPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {user && !searchTerm && (
                 <Link
-                  href="/blog/create"
+                  href="/dashboard"
                   className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-green-500/25"
                 >
                   <FiPlus className="text-xl" />
@@ -319,6 +323,15 @@ export default function BlogPage() {
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      
+                      {/* YouTube Badge */}
+                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                        <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                          <FiYoutube className="text-xs" />
+                          <span>{blog.youtubeUrls.length}</span>
+                        </div>
+                      )}
+                      
                       <div className="absolute top-4 right-4">
                         <span className="bg-cyan-500/90 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
                           <FiEye className="inline mr-1" />
@@ -331,6 +344,15 @@ export default function BlogPage() {
                   <Link href={`/blog/${blog.id}`}>
                     <div className="h-52 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all duration-500"></div>
+                      
+                      {/* YouTube Badge */}
+                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                        <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 z-20">
+                          <FiYoutube className="text-xs" />
+                          <span>{blog.youtubeUrls.length}</span>
+                        </div>
+                      )}
+                      
                       <div className="text-center z-10">
                         <FiBook className="text-4xl text-cyan-400 mx-auto mb-3 group-hover:scale-110 transition-transform duration-300" />
                         <p className="text-cyan-300 text-sm font-medium italic">

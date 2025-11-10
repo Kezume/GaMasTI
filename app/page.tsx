@@ -14,6 +14,7 @@ interface Blog {
   title: string;
   content: string;
   images?: string[];
+  // youtubeUrls?: string[];
   authorName?: string;
   authorAvatar?: string;
   authorId?: string;

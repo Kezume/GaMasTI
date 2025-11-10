@@ -1,20 +1,39 @@
+// app/dashboard/page.tsx - FULL CODE DENGAN YOUTUBE
 "use client";
 
 import { useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, setDoc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiImage, FiUpload, FiX, FiFileText, FiType } from "react-icons/fi";
+import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+
+// Interface Blog langsung di sini
+interface Blog {
+  id: string;
+  title: string;
+  content: string;
+  images?: string[];
+  youtubeUrls?: string[];
+  authorName: string;
+  authorAvatar: string;
+  authorId?: string;
+  githubUrl?: string;
+  createdAt?: { seconds: number };
+  status?: string;
+}
 
 export default function DashboardPage() {
   const [user] = useAuthState(auth);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isAddingYoutube, setIsAddingYoutube] = useState(false);
+  const [youtubeInput, setYoutubeInput] = useState("");
   const router = useRouter();
 
   if (!user)
@@ -29,6 +48,53 @@ export default function DashboardPage() {
         </div>
       </div>
     );
+
+  // Fungsi untuk extract YouTube ID
+  const extractYouTubeId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  // Validasi URL YouTube
+  const isValidYouTubeUrl = (url: string): boolean => {
+    return extractYouTubeId(url) !== null;
+  };
+
+  // Tambah URL YouTube
+  const addYouTubeUrl = () => {
+    const trimmedUrl = youtubeInput.trim();
+    
+    if (!trimmedUrl) {
+      alert("URL YouTube tidak boleh kosong");
+      return;
+    }
+
+    if (!isValidYouTubeUrl(trimmedUrl)) {
+      alert("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
+      return;
+    }
+
+    if (youtubeUrls.includes(trimmedUrl)) {
+      alert("URL YouTube ini sudah ditambahkan");
+      return;
+    }
+
+    if (youtubeUrls.length >= 3) {
+      alert("Maksimal 3 video YouTube yang dapat ditambahkan");
+      return;
+    }
+
+    setYoutubeUrls([...youtubeUrls, trimmedUrl]);
+    setYoutubeInput("");
+    setIsAddingYoutube(false);
+  };
+
+  // Hapus URL YouTube
+  const removeYouTubeUrl = (index: number) => {
+    const newUrls = youtubeUrls.filter((_, i) => i !== index);
+    setYoutubeUrls(newUrls);
+  };
 
   const uploadImagesToCloudinary = async () => {
     const uploadedUrls: string[] = [];
@@ -70,15 +136,20 @@ export default function DashboardPage() {
         user.displayName ||
         "";
 
-      // Simpan/update user data terlebih dahulu
+      // FIX: Jangan overwrite role user yang sudah ada
       const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      const existingRole = userSnap.exists() ? userSnap.data().role : 'user';
+
+      // Update user data TANPA overwrite role
       await setDoc(userRef, {
         email: user.email,
         displayName: user.displayName || "Anonim",
         photoURL: user.photoURL || "/default-avatar.png",
-        role: 'user', // Default role
+        role: existingRole, // ← PERTAHANKAN ROLE YANG SUDAH ADA
         lastLogin: new Date(),
-        createdAt: serverTimestamp()
+        // Jangan overwrite createdAt jika user sudah ada
+        createdAt: userSnap.exists() ? userSnap.data().createdAt : serverTimestamp()
       }, { merge: true });
 
       // Buat blog
@@ -86,11 +157,12 @@ export default function DashboardPage() {
         title: title.trim(),
         content: content.trim(),
         images: imageUrls,
+        youtubeUrls: youtubeUrls,
         authorName: user.displayName || "Anonim",
         authorAvatar: user.photoURL || "/default-avatar.png",
         authorId: user.uid,
         authorEmail: user.email || "",
-        status: 'published', // Default status published
+        status: 'published',
         githubUrl: githubUsername
           ? `https://github.com/${githubUsername}`
           : "",
@@ -212,6 +284,135 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* YouTube Section */}
+              <div>
+                <label className="block mb-3 text-sm font-medium text-gray-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FiYoutube className="text-red-500" />
+                    Video YouTube
+                    <span className="text-xs text-gray-500">(Opsional, maks. 3 video)</span>
+                  </div>
+                </label>
+                
+                {!isAddingYoutube && youtubeUrls.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingYoutube(true)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 px-4 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-red-500/25 mb-4"
+                  >
+                    <FiYoutube className="text-lg" />
+                    <span>Tambah Video YouTube</span>
+                    <FiPlus className="text-lg" />
+                  </button>
+                )}
+
+                {isAddingYoutube && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Masukkan URL YouTube
+                      </label>
+                      <input
+                        type="url"
+                        value={youtubeInput}
+                        onChange={(e) => setYoutubeInput(e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all placeholder-gray-500"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Contoh: https://youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={addYouTubeUrl}
+                        className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Tambah
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingYoutube(false);
+                          setYoutubeInput("");
+                        }}
+                        className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* YouTube URLs List */}
+                {youtubeUrls.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                      <FiYoutube className="text-red-500" />
+                      Video YouTube ({youtubeUrls.length}/3)
+                    </h4>
+                    
+                    <div className="grid gap-3">
+                      {youtubeUrls.map((url, index) => {
+                        const videoId = extractYouTubeId(url);
+                        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3 group"
+                          >
+                            {/* Thumbnail */}
+                            <div className="flex-shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden relative">
+                              {videoId ? (
+                                <img
+                                  src={thumbnailUrl}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                                  <FiYoutube className="text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* URL Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white truncate">
+                                Video {index + 1}
+                              </p>
+                              <p className="text-xs text-gray-400 truncate">
+                                {url}
+                              </p>
+                            </div>
+
+                            {/* Remove Button */}
+                            <button
+                              type="button"
+                              onClick={() => removeYouTubeUrl(index)}
+                              className="text-red-400 hover:text-red-300 transition-colors p-1"
+                              title="Hapus video"
+                            >
+                              <FiX className="text-lg" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {youtubeUrls.length >= 3 && (
+                      <p className="text-xs text-yellow-400 text-center">
+                        Maksimal 3 video YouTube telah tercapai
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Image Upload Section */}
               <div>
                 <label className="block mb-3 text-sm font-medium text-gray-300">
                   <div className="flex items-center gap-2 mb-2">
@@ -318,7 +519,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {title || content || previewUrls.length > 0 ? (
+            {title || content || previewUrls.length > 0 || youtubeUrls.length > 0 ? (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-2xl font-bold text-white mb-3 leading-tight">
@@ -344,6 +545,41 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
+                {/* YouTube Preview */}
+                {youtubeUrls.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <FiYoutube className="text-red-500" />
+                      Video YouTube
+                    </h4>
+                    <div className="grid gap-4">
+                      {youtubeUrls.map((url, index) => {
+                        const videoId = extractYouTubeId(url);
+                        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        
+                        return (
+                          <div key={index} className="relative aspect-video bg-black rounded-lg overflow-hidden border border-gray-600">
+                            <img
+                              src={thumbnailUrl}
+                              alt={`YouTube Video ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                                <FiYoutube className="text-white text-2xl" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-3 left-3 bg-black/70 px-3 py-1 rounded text-sm">
+                              Video {index + 1}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Images Preview */}
                 {previewUrls.length > 0 && (
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     {previewUrls.map((url, i) => (
