@@ -741,20 +741,44 @@ export default function DashboardPage() {
                                 setContentBlocks(newBlocks);
                               }}
                               className="w-full bg-black/80 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-white"
-                              style={{ backgroundColor: '#0a0a0a' }}
+                              style={{ backgroundColor: "#0a0a0a" }}
                             >
-                              <option value="javascript" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>JavaScript</option>
-                              <option value="typescript" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>TypeScript</option>
-                              <option value="python" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Python</option>
-                              <option value="java" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Java</option>
-                              <option value="cpp" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>C++</option>
-                              <option value="csharp" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>C#</option>
-                              <option value="html" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>HTML</option>
-                              <option value="css" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>CSS</option>
-                              <option value="sql" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>SQL</option>
-                              <option value="bash" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Bash</option>
-                              <option value="json" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>JSON</option>
-                              <option value="xml" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>XML</option>
+                              <option value="javascript" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                JavaScript
+                              </option>
+                              <option value="typescript" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                TypeScript
+                              </option>
+                              <option value="python" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                Python
+                              </option>
+                              <option value="java" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                Java
+                              </option>
+                              <option value="cpp" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                C++
+                              </option>
+                              <option value="csharp" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                C#
+                              </option>
+                              <option value="html" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                HTML
+                              </option>
+                              <option value="css" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                CSS
+                              </option>
+                              <option value="sql" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                SQL
+                              </option>
+                              <option value="bash" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                Bash
+                              </option>
+                              <option value="json" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                JSON
+                              </option>
+                              <option value="xml" style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
+                                XML
+                              </option>
                             </select>
                             <textarea
                               value={block.content}
@@ -762,7 +786,7 @@ export default function DashboardPage() {
                               placeholder="Paste kode Anda di sini..."
                               rows={10}
                               className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none font-mono text-sm text-gray-100"
-                              style={{ backgroundColor: '#0a0a0a' }}
+                              style={{ backgroundColor: "#0a0a0a" }}
                               spellCheck={false}
                             />
                             {block.content && (
@@ -898,12 +922,7 @@ export default function DashboardPage() {
                   {/* Dropdown Menu */}
                   <AnimatePresence>
                     {showBlockDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute z-10 w-full mt-2 bg-gray-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden"
-                      >
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute z-10 w-full mt-2 bg-gray-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
                         <div className="py-2">
                           <button
                             type="button"
