@@ -267,7 +267,7 @@ export default function HomePage() {
                   </Link>
                 )}
                 {/* Auth Button Mobile */}
-                // Di bagian mobile menu, ganti dengan:
+                {/* // Di bagian mobile menu, ganti dengan: */}
                 <div className="pt-3 border-t border-white/10">
                   <div onClick={() => setMobileMenuOpen(false)}>
                     <AuthButton />
