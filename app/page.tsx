@@ -142,6 +142,7 @@ export default function HomePage() {
                 className="w-full h-full object-cover"
                 width={80}
                 height={80}
+                // tessss
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = "none";
