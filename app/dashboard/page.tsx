@@ -6,9 +6,11 @@ import { db, auth } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus, FiMove, FiMaximize2, FiArrowLeft } from "react-icons/fi";
+import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus, FiMove, FiMaximize2, FiArrowLeft, FiEdit2, FiCheck } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import GridLayout, { Layout } from "react-grid-layout";
+import { toast } from "react-toastify";
+import ConfirmModal from "@/components/ConfirmModal";
 
 // Interface Blog
 interface Blog {
@@ -36,6 +38,17 @@ export default function DashboardPage() {
   const [isAddingYoutube, setIsAddingYoutube] = useState(false);
   const [youtubeInput, setYoutubeInput] = useState("");
   const router = useRouter();
+
+  // State untuk edit YouTube URL
+  const [editingYoutubeIndex, setEditingYoutubeIndex] = useState<number | null>(null);
+  const [editYoutubeInput, setEditYoutubeInput] = useState("");
+
+  // State untuk edit/replace gambar
+  const [replacingImageIndex, setReplacingImageIndex] = useState<number | null>(null);
+
+  // Confirm modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
 
   // State untuk grid layout - posisi bebas untuk setiap konten
   const [layout, setLayout] = useState<Layout[]>([
@@ -95,34 +108,75 @@ export default function DashboardPage() {
     const trimmedUrl = youtubeInput.trim();
 
     if (!trimmedUrl) {
-      alert("URL YouTube tidak boleh kosong");
+      toast.error("URL YouTube tidak boleh kosong");
       return;
     }
 
     if (!isValidYouTubeUrl(trimmedUrl)) {
-      alert("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
+      toast.error("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
       return;
     }
 
     if (youtubeUrls.includes(trimmedUrl)) {
-      alert("URL YouTube ini sudah ditambahkan");
+      toast.warning("URL YouTube ini sudah ditambahkan");
       return;
     }
 
     if (youtubeUrls.length >= 3) {
-      alert("Maksimal 3 video YouTube yang dapat ditambahkan");
+      toast.warning("Maksimal 3 video YouTube yang dapat ditambahkan");
       return;
     }
 
     setYoutubeUrls([...youtubeUrls, trimmedUrl]);
     setYoutubeInput("");
     setIsAddingYoutube(false);
+    toast.success("Video YouTube berhasil ditambahkan!");
   };
 
   // Hapus URL YouTube
   const removeYouTubeUrl = (index: number) => {
     const newUrls = youtubeUrls.filter((_, i) => i !== index);
     setYoutubeUrls(newUrls);
+  };
+
+  // Edit URL YouTube
+  const startEditYouTubeUrl = (index: number) => {
+    setEditingYoutubeIndex(index);
+    setEditYoutubeInput(youtubeUrls[index]);
+  };
+
+  const saveEditYouTubeUrl = () => {
+    if (editingYoutubeIndex === null) return;
+
+    const trimmedUrl = editYoutubeInput.trim();
+
+    if (!trimmedUrl) {
+      toast.error("URL YouTube tidak boleh kosong");
+      return;
+    }
+
+    if (!isValidYouTubeUrl(trimmedUrl)) {
+      toast.error("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
+      return;
+    }
+
+    // Check jika URL sudah ada di list (kecuali URL yang sedang diedit)
+    if (youtubeUrls.some((url, idx) => idx !== editingYoutubeIndex && url === trimmedUrl)) {
+      toast.warning("URL YouTube ini sudah ditambahkan");
+      return;
+    }
+
+    const newUrls = [...youtubeUrls];
+    newUrls[editingYoutubeIndex] = trimmedUrl;
+    setYoutubeUrls(newUrls);
+    setEditingYoutubeIndex(null);
+    setEditYoutubeInput("");
+    toast.success("URL YouTube berhasil diperbarui!");
+  };
+
+  const cancelEditYouTubeUrl = () => {
+    setEditingYoutubeIndex(null);
+    setEditYoutubeInput("");
   };
 
   const uploadImagesToCloudinary = async () => {
@@ -142,12 +196,26 @@ export default function DashboardPage() {
     return uploadedUrls;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return alert("Judul blog harus diisi!");
-    if (!content.trim()) return alert("Konten blog harus diisi!");
+    if (!title.trim()) {
+      toast.error("Judul blog harus diisi!");
+      return;
+    }
+    if (!content.trim()) {
+      toast.error("Konten blog harus diisi!");
+      return;
+    }
 
+    // Show confirm modal
+    setConfirmAction(() => handleSubmit);
+    setShowConfirmModal(true);
+  };
+
+  const handleSubmit = async () => {
     setUploading(true);
+    const loadingToast = toast.loading("Mempublikasikan blog...");
+
     try {
       const imageUrls = images.length > 0 ? await uploadImagesToCloudinary() : [];
       const githubProfile = user.providerData.find((p) => p.providerId === "github.com");
@@ -188,11 +256,24 @@ export default function DashboardPage() {
         createdAt: serverTimestamp(),
       });
 
-      alert("Blog berhasil dipublikasikan!");
-      router.push("/");
+      toast.update(loadingToast, {
+        render: "Blog berhasil dipublikasikan! 🎉",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      setTimeout(() => {
+        router.push("/");
+      }, 1000);
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mempublikasikan blog");
+      toast.update(loadingToast, {
+        render: "Terjadi kesalahan saat mempublikasikan blog",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } finally {
       setUploading(false);
     }
@@ -204,14 +285,14 @@ export default function DashboardPage() {
 
     // Validasi jumlah file
     if (images.length + files.length > 6) {
-      alert("Maksimal 6 gambar yang dapat diunggah");
+      toast.warning("Maksimal 6 gambar yang dapat diunggah");
       return;
     }
 
     // Validasi ukuran file (max 5MB)
     const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
-      alert("Beberapa file melebihi ukuran maksimal 5MB");
+      toast.error("Beberapa file melebihi ukuran maksimal 5MB");
       return;
     }
 
@@ -222,6 +303,31 @@ export default function DashboardPage() {
   const handleRemoveImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Replace/Edit gambar
+  const handleReplaceImage = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    
+    const file = e.target.files[0];
+    
+    // Validasi ukuran file (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File melebihi ukuran maksimal 5MB");
+      return;
+    }
+
+    // Replace gambar dan preview URL
+    const newImages = [...images];
+    const newPreviewUrls = [...previewUrls];
+    
+    newImages[index] = file;
+    newPreviewUrls[index] = URL.createObjectURL(file);
+    
+    setImages(newImages);
+    setPreviewUrls(newPreviewUrls);
+    setReplacingImageIndex(null);
+    toast.success("Gambar berhasil diganti!");
   };
 
   return (
@@ -259,7 +365,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmitClick} className="space-y-6">
               <div>
                 <label className="block mb-3 text-sm font-medium text-gray-300">
                   <div className="flex items-center gap-2 mb-2">
@@ -362,30 +468,82 @@ export default function DashboardPage() {
                       {youtubeUrls.map((url, index) => {
                         const videoId = extractYouTubeId(url);
                         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        const isEditing = editingYoutubeIndex === index;
 
                         return (
-                          <div key={index} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3 group">
-                            {/* Thumbnail */}
-                            <div className="flex-shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden relative">
-                              {videoId ? (
-                                <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full bg-gray-600 flex items-center justify-center">
-                                  <FiYoutube className="text-gray-400" />
+                          <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                            {isEditing ? (
+                              // Edit Mode
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-300 mb-2">Edit URL YouTube</label>
+                                  <input
+                                    type="url"
+                                    value={editYoutubeInput}
+                                    onChange={(e) => setEditYoutubeInput(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all placeholder-gray-500"
+                                  />
                                 </div>
-                              )}
-                            </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={saveEditYouTubeUrl}
+                                    className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    <FiCheck className="text-sm" />
+                                    Simpan
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditYouTubeUrl}
+                                    className="bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              // Display Mode
+                              <div className="flex items-center gap-3 group">
+                                {/* Thumbnail */}
+                                <div className="flex-shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden relative">
+                                  {videoId ? (
+                                    <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                                      <FiYoutube className="text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
 
-                            {/* URL Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white truncate">Video {index + 1}</p>
-                              <p className="text-xs text-gray-400 truncate">{url}</p>
-                            </div>
+                                {/* URL Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-white truncate">Video {index + 1}</p>
+                                  <p className="text-xs text-gray-400 truncate">{url}</p>
+                                </div>
 
-                            {/* Remove Button */}
-                            <button type="button" onClick={() => removeYouTubeUrl(index)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Hapus video">
-                              <FiX className="text-lg" />
-                            </button>
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditYouTubeUrl(index)}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors p-1"
+                                    title="Edit video"
+                                  >
+                                    <FiEdit2 className="text-lg" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeYouTubeUrl(index)}
+                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                    title="Hapus video"
+                                  >
+                                    <FiX className="text-lg" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -433,12 +591,23 @@ export default function DashboardPage() {
                       {previewUrls.map((url, i) => (
                         <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="relative group rounded-xl overflow-hidden border border-gray-600 bg-black/20">
                           <img src={url} alt={`preview-${i}`} className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-300" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button type="button" onClick={() => handleRemoveImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors">
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            {/* Replace Button */}
+                            <label className="bg-blue-500 hover:bg-blue-600 p-2 rounded-full transition-colors cursor-pointer" title="Ganti gambar">
+                              <FiEdit2 className="text-white text-sm" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleReplaceImage(i, e)}
+                                className="hidden"
+                              />
+                            </label>
+                            {/* Remove Button */}
+                            <button type="button" onClick={() => handleRemoveImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
                               <FiX className="text-white text-sm" />
                             </button>
                           </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs">{images[i]?.name}</div>
+                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs truncate max-w-[calc(100%-1rem)]">{images[i]?.name}</div>
                         </motion.div>
                       ))}
                     </motion.div>
@@ -591,6 +760,18 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={confirmAction || (() => {})}
+        title="Publikasikan Blog?"
+        message="Apakah Anda yakin ingin mempublikasikan blog ini? Blog akan langsung terlihat oleh semua pengguna."
+        confirmText="Publikasikan"
+        cancelText="Batal"
+        type="success"
+      />
     </main>
   );
 }

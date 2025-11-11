@@ -6,6 +6,8 @@ import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where }
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch } from "react-icons/fi";
+import { toast } from "react-toastify";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface User {
   uid: string;
@@ -43,6 +45,15 @@ export default function AdminDashboard() {
   const [searchEmail, setSearchEmail] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Confirm modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    action: () => void;
+    title: string;
+    message: string;
+    type: "danger" | "warning" | "info" | "success";
+  } | null>(null);
 
   // Check if current user is admin
   useEffect(() => {
@@ -116,9 +127,12 @@ export default function AdminDashboard() {
       })) as User[];
 
       setSearchResults(results);
+      if (results.length === 0) {
+        toast.info("Tidak ada user ditemukan");
+      }
     } catch (error) {
       console.error("Error searching user:", error);
-      alert("Error searching user");
+      toast.error("Error mencari user");
     } finally {
       setSearching(false);
     }
@@ -127,7 +141,7 @@ export default function AdminDashboard() {
   // Add admin by email
   const addAdminByEmail = async () => {
     if (!adminEmail.trim()) {
-      alert("Email harus diisi");
+      toast.warning("Email harus diisi");
       return;
     }
 
@@ -137,7 +151,7 @@ export default function AdminDashboard() {
       const usersSnapshot = await getDocs(usersQuery);
 
       if (usersSnapshot.empty) {
-        alert("User dengan email tersebut tidak ditemukan");
+        toast.error("User dengan email tersebut tidak ditemukan");
         return;
       }
 
@@ -155,53 +169,85 @@ export default function AdminDashboard() {
 
       setAdminEmail("");
       setShowAddAdmin(false);
-      alert(`User ${userData.email} berhasil dijadikan admin`);
+      toast.success(`User ${userData.email} berhasil dijadikan admin 🎉`);
     } catch (error) {
       console.error("Error adding admin:", error);
-      alert("Gagal menambahkan admin");
+      toast.error("Gagal menambahkan admin");
     }
   };
 
   // Admin actions
   const updateUserRole = async (userId: string, newRole: string) => {
-    try {
-      await updateDoc(doc(db, "users", userId), {
-        role: newRole,
-        updatedAt: new Date(),
-      });
-      setUsers(users.map((user) => (user.uid === userId ? { ...user, role: newRole } : user)));
-      alert(`Role user berhasil diubah menjadi ${newRole}`);
-    } catch (error) {
-      console.error("Error updating user role:", error);
-      alert("Gagal mengubah role user");
-    }
+    const user = users.find((u) => u.uid === userId);
+    const roleLabel = newRole === "admin" ? "Admin" : "User";
+
+    setConfirmAction({
+      action: async () => {
+        try {
+          await updateDoc(doc(db, "users", userId), {
+            role: newRole,
+            updatedAt: new Date(),
+          });
+          setUsers(users.map((user) => (user.uid === userId ? { ...user, role: newRole } : user)));
+          toast.success(`Role user berhasil diubah menjadi ${roleLabel} ✓`);
+        } catch (error) {
+          console.error("Error updating user role:", error);
+          toast.error("Gagal mengubah role user");
+        }
+      },
+      title: "Ubah Role User",
+      message: `Ubah role ${user?.displayName || user?.email} menjadi ${roleLabel}?`,
+      type: "warning",
+    });
+    setShowConfirmModal(true);
   };
 
   const updateBlogStatus = async (blogId: string, newStatus: string) => {
-    try {
-      await updateDoc(doc(db, "blogs", blogId), {
-        status: newStatus,
-        updatedAt: new Date(),
-      });
-      setBlogs(blogs.map((blog) => (blog.id === blogId ? { ...blog, status: newStatus } : blog)));
-      alert(`Status blog berhasil diubah menjadi ${newStatus}`);
-    } catch (error) {
-      console.error("Error updating blog status:", error);
-      alert("Gagal mengubah status blog");
-    }
+    const blog = blogs.find((b) => b.id === blogId);
+    const statusLabels: Record<string, string> = {
+      published: "Terbit",
+      draft: "Draft",
+      pending: "Pending",
+    };
+
+    setConfirmAction({
+      action: async () => {
+        try {
+          await updateDoc(doc(db, "blogs", blogId), {
+            status: newStatus,
+            updatedAt: new Date(),
+          });
+          setBlogs(blogs.map((blog) => (blog.id === blogId ? { ...blog, status: newStatus } : blog)));
+          toast.success(`Status blog berhasil diubah menjadi ${statusLabels[newStatus] || newStatus} ✓`);
+        } catch (error) {
+          console.error("Error updating blog status:", error);
+          toast.error("Gagal mengubah status blog");
+        }
+      },
+      title: "Ubah Status Blog",
+      message: `Ubah status blog "${blog?.title || "ini"}" menjadi ${statusLabels[newStatus] || newStatus}?`,
+      type: "info",
+    });
+    setShowConfirmModal(true);
   };
 
   const deleteBlog = async (blogId: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus blog ini?")) return;
-
-    try {
-      await deleteDoc(doc(db, "blogs", blogId));
-      setBlogs(blogs.filter((blog) => blog.id !== blogId));
-      alert("Blog berhasil dihapus");
-    } catch (error) {
-      console.error("Error deleting blog:", error);
-      alert("Gagal menghapus blog");
-    }
+    setConfirmAction({
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, "blogs", blogId));
+          setBlogs(blogs.filter((blog) => blog.id !== blogId));
+          toast.success("Blog berhasil dihapus");
+        } catch (error) {
+          console.error("Error deleting blog:", error);
+          toast.error("Gagal menghapus blog");
+        }
+      },
+      title: "Hapus Blog",
+      message: "Apakah Anda yakin ingin menghapus blog ini? Tindakan ini tidak dapat dibatalkan.",
+      type: "danger",
+    });
+    setShowConfirmModal(true);
   };
 
   // Stats calculation
@@ -649,6 +695,25 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      {confirmAction && (
+        <ConfirmModal
+          isOpen={showConfirmModal}
+          onClose={() => {
+            setShowConfirmModal(false);
+            setConfirmAction(null);
+          }}
+          onConfirm={() => {
+            confirmAction.action();
+            setShowConfirmModal(false);
+            setConfirmAction(null);
+          }}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          type={confirmAction.type}
+        />
+      )}
     </main>
   );
 }
