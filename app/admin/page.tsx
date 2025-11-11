@@ -5,10 +5,10 @@ import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
-import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch, FiHome } from "react-icons/fi";
-import { useRouter } from "next/navigation";
+import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch, FiArrowLeft, FiHome } from "react-icons/fi";
 import { toast } from "react-toastify";
 import ConfirmModal from "@/components/ConfirmModal";
+import Link from "next/link";
 
 interface User {
   uid: string;
@@ -22,7 +22,7 @@ interface User {
 interface Blog {
   id: string;
   title: string;
-  content?: string;
+  content: string;
   authorName: string;
   authorId: string;
   status: string;
@@ -33,7 +33,6 @@ interface Blog {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [user, authLoading] = useAuthState(auth);
   const [users, setUsers] = useState<User[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -108,6 +107,19 @@ export default function AdminDashboard() {
         id: doc.id,
         ...doc.data(),
       })) as Blog[];
+      
+      // Debug log untuk memeriksa struktur data blog
+      console.log("Fetched blogs:", blogsData);
+      blogsData.forEach((blog, index) => {
+        console.log(`Blog ${index}:`, {
+          id: blog.id,
+          title: blog.title,
+          content: blog.content,
+          hasContent: !!blog.content,
+          contentType: typeof blog.content
+        });
+      });
+      
       setBlogs(blogsData);
     } catch (error) {
       console.error("Error fetching admin data:", error);
@@ -253,6 +265,29 @@ export default function AdminDashboard() {
     setShowConfirmModal(true);
   };
 
+  // Helper function untuk menangani konten blog yang undefined
+  const getBlogContentPreview = (content: string | undefined) => {
+    if (!content) return "Tidak ada konten";
+    return content.substring(0, 50) + (content.length > 50 ? "..." : "");
+  };
+
+  // Helper function untuk menangani tanggal
+  const getBlogDate = (createdAt: any) => {
+    if (!createdAt) return "Tanggal tidak tersedia";
+    try {
+      if (createdAt.toDate) {
+        return createdAt.toDate().toLocaleDateString("id-ID");
+      } else if (createdAt.seconds) {
+        return new Date(createdAt.seconds * 1000).toLocaleDateString("id-ID");
+      } else {
+        return "Format tanggal tidak valid";
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return "Error tanggal";
+    }
+  };
+
   // Stats calculation
   const stats = {
     totalUsers: users.length,
@@ -330,14 +365,21 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400">Panel Administrasi</p>
               </div>
             </div>
+            
             <div className="flex items-center gap-4">
-              <button onClick={() => router.push("/")} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-xl transition-all text-sm font-medium">
-                <FiHome className="text-base" />
-                <span className="hidden sm:inline">Back to Home</span>
-              </button>
-              <div className="text-sm text-gray-400 hidden md:block">
+              <div className="text-sm text-gray-400 hidden sm:block">
                 Logged in as: <span className="text-blue-400">{user.email}</span>
               </div>
+              
+              {/* TOMBOL KEMBALI KE MENU AWAL */}
+              <Link
+                href="/"
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400"
+              >
+                <FiHome className="text-lg" />
+                <span className="hidden sm:inline">Kembali ke Beranda</span>
+                <span className="sm:hidden">Beranda</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -369,7 +411,18 @@ export default function AdminDashboard() {
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full">
-              <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+                
+                {/* TOMBOL KEMBALI DI CONTENT AREA (MOBILE FRIENDLY) */}
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400 w-full sm:w-auto justify-center"
+                >
+                  <FiArrowLeft className="text-lg" />
+                  <span>Kembali ke Beranda</span>
+                </Link>
+              </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
@@ -421,6 +474,7 @@ export default function AdminDashboard() {
                   <div className="space-y-3">
                     {blogs.slice(0, 5).map((blog) => (
                       <div key={blog.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+<<<<<<< HEAD
                         <div className="flex-1 min-w-0 mr-3">
                           <p className="text-sm font-medium text-white truncate">{blog.title}</p>
                           <div className="flex items-center gap-2 mt-1">
@@ -431,6 +485,11 @@ export default function AdminDashboard() {
                               <span className="text-xs">{blog.views || 0}</span>
                             </div>
                           </div>
+=======
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{blog.title || "Judul tidak tersedia"}</p>
+                          <p className="text-xs text-gray-400">{blog.authorName || "Author tidak diketahui"}</p>
+>>>>>>> 4380a0e233e58f132cb2abc23ee4c90b9b92a442
                         </div>
                         <span
                           className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ${
@@ -453,7 +512,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <img src={user.photoURL || "/default-avatar.png"} alt={user.displayName} className="w-8 h-8 rounded-full" />
                           <div>
-                            <p className="text-sm font-medium text-white">{user.displayName}</p>
+                            <p className="text-sm font-medium text-white">{user.displayName || "No Name"}</p>
                             <p className="text-xs text-gray-400">{user.email}</p>
                           </div>
                         </div>
@@ -472,13 +531,24 @@ export default function AdminDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
                 <h2 className="text-2xl font-bold">Manajemen User</h2>
 
-                <button
-                  onClick={() => setShowAddAdmin(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-4 py-2 rounded-xl font-medium transition-all shadow-lg hover:shadow-green-500/25 w-full sm:w-auto"
-                >
-                  <FiPlus className="text-lg" />
-                  <span>Tambah Admin</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => setShowAddAdmin(true)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-4 py-2 rounded-xl font-medium transition-all shadow-lg hover:shadow-green-500/25 w-full sm:w-auto justify-center"
+                  >
+                    <FiPlus className="text-lg" />
+                    <span>Tambah Admin</span>
+                  </button>
+                  
+                  {/* TOMBOL KEMBALI DI USERS TAB */}
+                  <Link
+                    href="/"
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400 w-full sm:w-auto justify-center"
+                  >
+                    <FiArrowLeft className="text-lg" />
+                    <span>Kembali</span>
+                  </Link>
+                </div>
               </div>
 
               {/* Add Admin Modal */}
@@ -538,7 +608,7 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-3">
                                 <img src={result.photoURL || "/default-avatar.png"} alt={result.displayName} className="w-8 h-8 rounded-full" />
                                 <div>
-                                  <p className="text-sm font-medium text-white">{result.displayName}</p>
+                                  <p className="text-sm font-medium text-white">{result.displayName || "No Name"}</p>
                                   <p className="text-xs text-gray-400">{result.email}</p>
                                 </div>
                               </div>
@@ -583,7 +653,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-3">
                               <img src={user.photoURL || "/default-avatar.png"} alt={user.displayName} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full" />
                               <div>
-                                <p className="font-medium text-white text-sm sm:text-base">{user.displayName}</p>
+                                <p className="font-medium text-white text-sm sm:text-base">{user.displayName || "No Name"}</p>
                                 <p className="text-xs text-gray-400">ID: {user.uid.substring(0, 8)}...</p>
                               </div>
                             </div>
@@ -632,7 +702,18 @@ export default function AdminDashboard() {
           {/* Blogs Tab */}
           {activeTab === "blogs" && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full">
-              <h2 className="text-2xl font-bold">Manajemen Blog</h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-bold">Manajemen Blog</h2>
+                
+                {/* TOMBOL KEMBALI DI BLOGS TAB */}
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400 w-full sm:w-auto justify-center"
+                >
+                  <FiArrowLeft className="text-lg" />
+                  <span>Kembali ke Beranda</span>
+                </Link>
+              </div>
 
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden w-full">
                 <div className="overflow-x-auto">
@@ -651,10 +732,11 @@ export default function AdminDashboard() {
                       {blogs.map((blog) => (
                         <tr key={blog.id} className="border-b border-white/10 last:border-0 hover:bg-white/5">
                           <td className="p-4">
-                            <p className="font-medium text-white line-clamp-2 text-sm sm:text-base">{blog.title}</p>
-                            <p className="text-xs text-gray-400 line-clamp-1">{blog.content ? blog.content.substring(0, 50) : "No content"}...</p>
+                            <p className="font-medium text-white line-clamp-2 text-sm sm:text-base">{blog.title || "Judul tidak tersedia"}</p>
+                            {/* PERBAIKAN DI SINI: Gunakan helper function */}
+                            <p className="text-xs text-gray-400 line-clamp-1">{getBlogContentPreview(blog.content)}</p>
                           </td>
-                          <td className="p-4 text-gray-300 text-sm sm:text-base">{blog.authorName}</td>
+                          <td className="p-4 text-gray-300 text-sm sm:text-base">{blog.authorName || "Author tidak diketahui"}</td>
                           <td className="p-4">
                             <span
                               className={`px-2 sm:px-3 py-1 rounded-full text-xs ${
@@ -668,6 +750,7 @@ export default function AdminDashboard() {
                               {blog.status || "pending"}
                             </span>
                           </td>
+<<<<<<< HEAD
                           <td className="p-4">
                             <div className="flex items-center gap-1 text-cyan-400">
                               <FiEye className="text-sm" />
@@ -675,6 +758,12 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="p-4 text-gray-300 text-xs sm:text-sm">{blog.createdAt?.toDate?.().toLocaleDateString("id-ID")}</td>
+=======
+                          <td className="p-4 text-gray-300 text-xs sm:text-sm">
+                            {/* PERBAIKAN: Gunakan helper function untuk tanggal */}
+                            {getBlogDate(blog.createdAt)}
+                          </td>
+>>>>>>> 4380a0e233e58f132cb2abc23ee4c90b9b92a442
                           <td className="p-4">
                             <div className="flex items-center gap-1 sm:gap-2">
                               {/* Publish/Unpublish */}
