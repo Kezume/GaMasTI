@@ -136,10 +136,12 @@ export default function HomePage() {
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
               {/* Ganti dengan logo riset Anda */}
               {/* // Ganti path logo dengan absolute path */}
-              <img
-                src={`${process.env.NEXT_PUBLIC_BASE_URL || ""}/logoHMPTI.png`}
+              <Image
+                src={`/LogoHMPTI.png`}
                 alt="Logo Riset TI"
                 className="w-full h-full object-cover"
+                width={80}
+                height={80}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = "none";
@@ -738,4 +740,5 @@ export default function HomePage() {
 }
 
 // Tambahkan komponen AnimatePresence jika belum di-import
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";import Image from "next/image";
+
