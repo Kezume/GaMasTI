@@ -2,35 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
-import {
-  FiUsers,
-  FiFileText,
-  FiSettings,
-  FiEye,
-  FiEyeOff,
-  FiTrash2,
-  FiEdit3,
-  FiUserCheck,
-  FiUserX,
-  FiCheck,
-  FiX,
-  FiBarChart,
-  FiPlus,
-  FiMail,
-  FiSearch,
-} from "react-icons/fi";
+import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch } from "react-icons/fi";
 
 interface User {
   uid: string;
@@ -54,14 +29,13 @@ interface Blog {
 }
 
 export default function AdminDashboard() {
-  const [user] = useAuthState(auth);
+  const [user, authLoading] = useAuthState(auth);
   const [users, setUsers] = useState<User[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "blogs">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "blogs">("overview");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
   // State untuk add admin
   const [showAddAdmin, setShowAddAdmin] = useState(false);
@@ -75,15 +49,23 @@ export default function AdminDashboard() {
     const checkAdmin = async () => {
       if (user) {
         try {
+          setCheckingAdmin(true);
           const userDoc = await getDocs(collection(db, "users"));
           const userData = userDoc.docs.find((doc) => doc.id === user.uid);
           if (userData?.data()?.role === "admin") {
             setIsAdmin(true);
             fetchData();
+          } else {
+            setIsAdmin(false);
           }
         } catch (error) {
           console.error("Error checking admin:", error);
+          setIsAdmin(false);
+        } finally {
+          setCheckingAdmin(false);
         }
+      } else {
+        setCheckingAdmin(false);
       }
     };
     checkAdmin();
@@ -95,10 +77,7 @@ export default function AdminDashboard() {
       setLoading(true);
 
       // Fetch users - tanpa filter untuk mendapatkan semua user
-      const usersQuery = query(
-        collection(db, "users"),
-        orderBy("createdAt", "desc")
-      );
+      const usersQuery = query(collection(db, "users"), orderBy("createdAt", "desc"));
       const usersSnapshot = await getDocs(usersQuery);
       const usersData = usersSnapshot.docs.map((doc) => ({
         uid: doc.id,
@@ -109,10 +88,7 @@ export default function AdminDashboard() {
       setUsers(usersData);
 
       // Fetch all blogs
-      const blogsQuery = query(
-        collection(db, "blogs"),
-        orderBy("createdAt", "desc")
-      );
+      const blogsQuery = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
       const blogsSnapshot = await getDocs(blogsQuery);
       const blogsData = blogsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -132,11 +108,7 @@ export default function AdminDashboard() {
 
     setSearching(true);
     try {
-      const usersQuery = query(
-        collection(db, "users"),
-        where("email", ">=", searchEmail),
-        where("email", "<=", searchEmail + "\uf8ff")
-      );
+      const usersQuery = query(collection(db, "users"), where("email", ">=", searchEmail), where("email", "<=", searchEmail + "\uf8ff"));
       const usersSnapshot = await getDocs(usersQuery);
       const results = usersSnapshot.docs.map((doc) => ({
         uid: doc.id,
@@ -161,10 +133,7 @@ export default function AdminDashboard() {
 
     try {
       // Cari user berdasarkan email
-      const usersQuery = query(
-        collection(db, "users"),
-        where("email", "==", adminEmail.trim().toLowerCase())
-      );
+      const usersQuery = query(collection(db, "users"), where("email", "==", adminEmail.trim().toLowerCase()));
       const usersSnapshot = await getDocs(usersQuery);
 
       if (usersSnapshot.empty) {
@@ -182,11 +151,7 @@ export default function AdminDashboard() {
       });
 
       // Update state
-      setUsers(
-        users.map((user) =>
-          user.uid === userDoc.id ? { ...user, role: "admin" } : user
-        )
-      );
+      setUsers(users.map((user) => (user.uid === userDoc.id ? { ...user, role: "admin" } : user)));
 
       setAdminEmail("");
       setShowAddAdmin(false);
@@ -204,11 +169,7 @@ export default function AdminDashboard() {
         role: newRole,
         updatedAt: new Date(),
       });
-      setUsers(
-        users.map((user) =>
-          user.uid === userId ? { ...user, role: newRole } : user
-        )
-      );
+      setUsers(users.map((user) => (user.uid === userId ? { ...user, role: newRole } : user)));
       alert(`Role user berhasil diubah menjadi ${newRole}`);
     } catch (error) {
       console.error("Error updating user role:", error);
@@ -222,11 +183,7 @@ export default function AdminDashboard() {
         status: newStatus,
         updatedAt: new Date(),
       });
-      setBlogs(
-        blogs.map((blog) =>
-          blog.id === blogId ? { ...blog, status: newStatus } : blog
-        )
-      );
+      setBlogs(blogs.map((blog) => (blog.id === blogId ? { ...blog, status: newStatus } : blog)));
       alert(`Status blog berhasil diubah menjadi ${newStatus}`);
     } catch (error) {
       console.error("Error updating blog status:", error);
@@ -253,11 +210,24 @@ export default function AdminDashboard() {
     totalBlogs: blogs.length,
     publishedBlogs: blogs.filter((blog) => blog.status === "published").length,
     draftBlogs: blogs.filter((blog) => blog.status === "draft").length,
-    pendingBlogs: blogs.filter(
-      (blog) => !blog.status || blog.status === "pending"
-    ).length,
+    pendingBlogs: blogs.filter((blog) => !blog.status || blog.status === "pending").length,
     adminUsers: users.filter((user) => user.role === "admin").length,
   };
+
+  // Show loading while checking auth or admin status
+  if (authLoading || checkingAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center p-8 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10">
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <FiSettings className="text-2xl text-blue-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Memuat...</h3>
+          <p className="text-gray-400">Memeriksa akses admin</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -329,9 +299,7 @@ export default function AdminDashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                activeTab === tab.id
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
-                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                activeTab === tab.id ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
             >
               <tab.icon className="text-lg" />
@@ -344,11 +312,7 @@ export default function AdminDashboard() {
         <div className="space-y-8">
           {/* Overview Tab */}
           {activeTab === "overview" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <h2 className="text-2xl font-bold">Dashboard Overview</h2>
 
               {/* Stats Grid */}
@@ -379,26 +343,14 @@ export default function AdminDashboard() {
                     color: "pink",
                   },
                 ].map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-                  >
+                  <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-gray-400 text-sm">{stat.label}</p>
-                        <p className="text-3xl font-bold text-white mt-2">
-                          {stat.value}
-                        </p>
+                        <p className="text-3xl font-bold text-white mt-2">{stat.value}</p>
                       </div>
-                      <div
-                        className={`w-12 h-12 bg-${stat.color}-500/20 rounded-xl flex items-center justify-center`}
-                      >
-                        <stat.icon
-                          className={`text-2xl text-${stat.color}-400`}
-                        />
+                      <div className={`w-12 h-12 bg-${stat.color}-500/20 rounded-xl flex items-center justify-center`}>
+                        <stat.icon className={`text-2xl text-${stat.color}-400`} />
                       </div>
                     </div>
                   </motion.div>
@@ -412,27 +364,12 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-semibold mb-4">Blogs Terbaru</h3>
                   <div className="space-y-3">
                     {blogs.slice(0, 5).map((blog) => (
-                      <div
-                        key={blog.id}
-                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
-                      >
+                      <div key={blog.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
-                            {blog.title}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {blog.authorName}
-                          </p>
+                          <p className="text-sm font-medium text-white truncate">{blog.title}</p>
+                          <p className="text-xs text-gray-400">{blog.authorName}</p>
                         </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            blog.status === "published"
-                              ? "bg-green-500/20 text-green-400"
-                              : blog.status === "draft"
-                              ? "bg-yellow-500/20 text-yellow-400"
-                              : "bg-gray-500/20 text-gray-400"
-                          }`}
-                        >
+                        <span className={`px-2 py-1 rounded-full text-xs ${blog.status === "published" ? "bg-green-500/20 text-green-400" : blog.status === "draft" ? "bg-yellow-500/20 text-yellow-400" : "bg-gray-500/20 text-gray-400"}`}>
                           {blog.status || "pending"}
                         </span>
                       </div>
@@ -445,34 +382,15 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-semibold mb-4">Users Terbaru</h3>
                   <div className="space-y-3">
                     {users.slice(0, 5).map((user) => (
-                      <div
-                        key={user.uid}
-                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
-                      >
+                      <div key={user.uid} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={user.photoURL || "/default-avatar.png"}
-                            alt={user.displayName}
-                            className="w-8 h-8 rounded-full"
-                          />
+                          <img src={user.photoURL || "/default-avatar.png"} alt={user.displayName} className="w-8 h-8 rounded-full" />
                           <div>
-                            <p className="text-sm font-medium text-white">
-                              {user.displayName}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {user.email}
-                            </p>
+                            <p className="text-sm font-medium text-white">{user.displayName}</p>
+                            <p className="text-xs text-gray-400">{user.email}</p>
                           </div>
                         </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            user.role === "admin"
-                              ? "bg-purple-500/20 text-purple-400"
-                              : "bg-blue-500/20 text-blue-400"
-                          }`}
-                        >
-                          {user.role}
-                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"}`}>{user.role}</span>
                       </div>
                     ))}
                   </div>
@@ -483,11 +401,7 @@ export default function AdminDashboard() {
 
           {/* Users Tab */}
           {activeTab === "users" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 className="text-2xl font-bold">Manajemen User</h2>
 
@@ -502,11 +416,7 @@ export default function AdminDashboard() {
 
               {/* Add Admin Modal */}
               {showAddAdmin && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-                >
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <FiUserCheck className="text-green-400" />
                     Tambah Admin Baru
@@ -514,9 +424,7 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Masukkan Email User
-                      </label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Masukkan Email User</label>
                       <div className="flex gap-2">
                         <input
                           type="email"
@@ -525,16 +433,10 @@ export default function AdminDashboard() {
                           placeholder="contoh: user@example.com"
                           className="flex-1 bg-black/30 border border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                         />
-                        <button
-                          onClick={addAdminByEmail}
-                          className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-xl font-medium transition-colors"
-                        >
+                        <button onClick={addAdminByEmail} className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-xl font-medium transition-colors">
                           Tambah
                         </button>
-                        <button
-                          onClick={() => setShowAddAdmin(false)}
-                          className="bg-gray-500 hover:bg-gray-600 px-4 py-3 rounded-xl font-medium transition-colors"
-                        >
+                        <button onClick={() => setShowAddAdmin(false)} className="bg-gray-500 hover:bg-gray-600 px-4 py-3 rounded-xl font-medium transition-colors">
                           Batal
                         </button>
                       </div>
@@ -542,9 +444,7 @@ export default function AdminDashboard() {
 
                     {/* Email Search Section */}
                     <div className="border-t border-white/10 pt-4">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Cari User by Email
-                      </label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Cari User by Email</label>
                       <div className="flex gap-2 mb-3">
                         <div className="flex-1 relative">
                           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -556,11 +456,7 @@ export default function AdminDashboard() {
                             className="w-full bg-black/30 border border-gray-600 rounded-xl pl-10 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                           />
                         </div>
-                        <button
-                          onClick={searchUserByEmail}
-                          disabled={searching}
-                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 px-6 py-3 rounded-xl font-medium transition-colors"
-                        >
+                        <button onClick={searchUserByEmail} disabled={searching} className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 px-6 py-3 rounded-xl font-medium transition-colors">
                           {searching ? "Searching..." : "Search"}
                         </button>
                       </div>
@@ -569,35 +465,16 @@ export default function AdminDashboard() {
                       {searchResults.length > 0 && (
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                           {searchResults.map((result) => (
-                            <div
-                              key={result.uid}
-                              className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
-                            >
+                            <div key={result.uid} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                               <div className="flex items-center gap-3">
-                                <img
-                                  src={result.photoURL || "/default-avatar.png"}
-                                  alt={result.displayName}
-                                  className="w-8 h-8 rounded-full"
-                                />
+                                <img src={result.photoURL || "/default-avatar.png"} alt={result.displayName} className="w-8 h-8 rounded-full" />
                                 <div>
-                                  <p className="text-sm font-medium text-white">
-                                    {result.displayName}
-                                  </p>
-                                  <p className="text-xs text-gray-400">
-                                    {result.email}
-                                  </p>
+                                  <p className="text-sm font-medium text-white">{result.displayName}</p>
+                                  <p className="text-xs text-gray-400">{result.email}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs ${
-                                    result.role === "admin"
-                                      ? "bg-purple-500/20 text-purple-400"
-                                      : "bg-blue-500/20 text-blue-400"
-                                  }`}
-                                >
-                                  {result.role}
-                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs ${result.role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"}`}>{result.role}</span>
                                 {result.role !== "admin" && (
                                   <button
                                     onClick={() => {
@@ -624,52 +501,27 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-white/10">
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          User
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Email
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Role
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Actions
-                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">User</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Email</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Role</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {users.map((user) => (
-                        <tr
-                          key={user.uid}
-                          className="border-b border-white/10 last:border-0"
-                        >
+                        <tr key={user.uid} className="border-b border-white/10 last:border-0">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <img
-                                src={user.photoURL || "/default-avatar.png"}
-                                alt={user.displayName}
-                                className="w-10 h-10 rounded-full"
-                              />
+                              <img src={user.photoURL || "/default-avatar.png"} alt={user.displayName} className="w-10 h-10 rounded-full" />
                               <div>
-                                <p className="font-medium text-white">
-                                  {user.displayName}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                  ID: {user.uid.substring(0, 8)}...
-                                </p>
+                                <p className="font-medium text-white">{user.displayName}</p>
+                                <p className="text-sm text-gray-400">ID: {user.uid.substring(0, 8)}...</p>
                               </div>
                             </div>
                           </td>
                           <td className="p-4 text-gray-300">{user.email}</td>
                           <td className="p-4">
-                            <span
-                              className={`px-3 py-1 rounded-full text-sm ${
-                                user.role === "admin"
-                                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                                  : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                              }`}
-                            >
+                            <span className={`px-3 py-1 rounded-full text-sm ${user.role === "admin" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30"}`}>
                               {user.role}
                             </span>
                           </td>
@@ -677,9 +529,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2">
                               {user.role === "user" ? (
                                 <button
-                                  onClick={() =>
-                                    updateUserRole(user.uid, "admin")
-                                  }
+                                  onClick={() => updateUserRole(user.uid, "admin")}
                                   className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-2 rounded-xl transition-all"
                                 >
                                   <FiUserCheck className="text-sm" />
@@ -688,9 +538,7 @@ export default function AdminDashboard() {
                               ) : (
                                 user.uid !== auth.currentUser?.uid && (
                                   <button
-                                    onClick={() =>
-                                      updateUserRole(user.uid, "user")
-                                    }
+                                    onClick={() => updateUserRole(user.uid, "user")}
                                     className="flex items-center gap-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 text-gray-400 hover:text-gray-300 px-3 py-2 rounded-xl transition-all"
                                   >
                                     <FiUserX className="text-sm" />
@@ -698,11 +546,7 @@ export default function AdminDashboard() {
                                   </button>
                                 )
                               )}
-                              {user.uid === auth.currentUser?.uid && (
-                                <span className="text-xs text-gray-500">
-                                  Current User
-                                </span>
-                              )}
+                              {user.uid === auth.currentUser?.uid && <span className="text-xs text-gray-500">Current User</span>}
                             </div>
                           </td>
                         </tr>
@@ -716,11 +560,7 @@ export default function AdminDashboard() {
 
           {/* Blogs Tab */}
           {activeTab === "blogs" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <h2 className="text-2xl font-bold">Manajemen Blog</h2>
 
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden">
@@ -728,40 +568,21 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-white/10">
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Judul
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Author
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Status
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Tanggal
-                        </th>
-                        <th className="text-left p-4 text-sm font-medium text-gray-400">
-                          Actions
-                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Judul</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Author</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Status</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Tanggal</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {blogs.map((blog) => (
-                        <tr
-                          key={blog.id}
-                          className="border-b border-white/10 last:border-0 hover:bg-white/5"
-                        >
+                        <tr key={blog.id} className="border-b border-white/10 last:border-0 hover:bg-white/5">
                           <td className="p-4">
-                            <p className="font-medium text-white line-clamp-2">
-                              {blog.title}
-                            </p>
-                            <p className="text-sm text-gray-400 line-clamp-1">
-                              {blog.content.substring(0, 50)}...
-                            </p>
+                            <p className="font-medium text-white line-clamp-2">{blog.title}</p>
+                            <p className="text-sm text-gray-400 line-clamp-1">{blog.content.substring(0, 50)}...</p>
                           </td>
-                          <td className="p-4 text-gray-300">
-                            {blog.authorName}
-                          </td>
+                          <td className="p-4 text-gray-300">{blog.authorName}</td>
                           <td className="p-4">
                             <span
                               className={`px-3 py-1 rounded-full text-sm ${
@@ -775,19 +596,13 @@ export default function AdminDashboard() {
                               {blog.status || "pending"}
                             </span>
                           </td>
-                          <td className="p-4 text-gray-300 text-sm">
-                            {blog.createdAt
-                              ?.toDate?.()
-                              .toLocaleDateString("id-ID")}
-                          </td>
+                          <td className="p-4 text-gray-300 text-sm">{blog.createdAt?.toDate?.().toLocaleDateString("id-ID")}</td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
                               {/* Publish/Unpublish */}
                               {blog.status !== "published" ? (
                                 <button
-                                  onClick={() =>
-                                    updateBlogStatus(blog.id, "published")
-                                  }
+                                  onClick={() => updateBlogStatus(blog.id, "published")}
                                   className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 hover:text-green-300 p-2 rounded-xl transition-all"
                                   title="Publish"
                                 >
@@ -795,9 +610,7 @@ export default function AdminDashboard() {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() =>
-                                    updateBlogStatus(blog.id, "draft")
-                                  }
+                                  onClick={() => updateBlogStatus(blog.id, "draft")}
                                   className="flex items-center gap-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 hover:text-yellow-300 p-2 rounded-xl transition-all"
                                   title="Unpublish"
                                 >
@@ -808,9 +621,7 @@ export default function AdminDashboard() {
                               {/* Reject */}
                               {blog.status !== "rejected" && (
                                 <button
-                                  onClick={() =>
-                                    updateBlogStatus(blog.id, "rejected")
-                                  }
+                                  onClick={() => updateBlogStatus(blog.id, "rejected")}
                                   className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300 p-2 rounded-xl transition-all"
                                   title="Reject"
                                 >

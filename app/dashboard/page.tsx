@@ -1,15 +1,16 @@
-// app/dashboard/page.tsx - FULL CODE DENGAN YOUTUBE
+// app/dashboard/page.tsx - CUSTOM GRID LAYOUT
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { db, auth } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus } from "react-icons/fi";
+import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus, FiMove, FiMaximize2, FiArrowLeft } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import GridLayout, { Layout } from "react-grid-layout";
 
-// Interface Blog langsung di sini
+// Interface Blog
 interface Blog {
   id: string;
   title: string;
@@ -25,7 +26,7 @@ interface Blog {
 }
 
 export default function DashboardPage() {
-  const [user] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
@@ -36,6 +37,34 @@ export default function DashboardPage() {
   const [youtubeInput, setYoutubeInput] = useState("");
   const router = useRouter();
 
+  // State untuk grid layout - posisi bebas untuk setiap konten
+  const [layout, setLayout] = useState<Layout[]>([
+    { i: "title", x: 0, y: 0, w: 6, h: 2 }, // Judul di atas, full width
+    { i: "content", x: 0, y: 2, w: 4, h: 4 }, // Konten di kiri
+    { i: "youtube", x: 4, y: 2, w: 2, h: 4 }, // YouTube di kanan
+    { i: "images", x: 0, y: 6, w: 6, h: 5 }, // Images di bawah (lebih tinggi)
+  ]);
+
+  // Handle layout change
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    setLayout(newLayout);
+  };
+
+  // Loading state
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+        <div className="text-center p-8 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10">
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <FiFileText className="text-2xl text-blue-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Memuat...</h3>
+          <p className="text-gray-400">Mohon tunggu sebentar</p>
+        </div>
+      </div>
+    );
+
+  // Not authenticated
   if (!user)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
@@ -64,7 +93,7 @@ export default function DashboardPage() {
   // Tambah URL YouTube
   const addYouTubeUrl = () => {
     const trimmedUrl = youtubeInput.trim();
-    
+
     if (!trimmedUrl) {
       alert("URL YouTube tidak boleh kosong");
       return;
@@ -101,18 +130,12 @@ export default function DashboardPage() {
     for (const file of images) {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append(
-        "upload_preset",
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
-      );
+      formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
       const data = await res.json();
       uploadedUrls.push(data.secure_url);
     }
@@ -127,30 +150,28 @@ export default function DashboardPage() {
     setUploading(true);
     try {
       const imageUrls = images.length > 0 ? await uploadImagesToCloudinary() : [];
-      const githubProfile = user.providerData.find(
-        (p) => p.providerId === "github.com"
-      );
-      const githubUsername =
-        githubProfile?.uid ||
-        githubProfile?.displayName ||
-        user.displayName ||
-        "";
+      const githubProfile = user.providerData.find((p) => p.providerId === "github.com");
+      const githubUsername = githubProfile?.uid || githubProfile?.displayName || user.displayName || "";
 
       // FIX: Jangan overwrite role user yang sudah ada
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
-      const existingRole = userSnap.exists() ? userSnap.data().role : 'user';
+      const existingRole = userSnap.exists() ? userSnap.data().role : "user";
 
       // Update user data TANPA overwrite role
-      await setDoc(userRef, {
-        email: user.email,
-        displayName: user.displayName || "Anonim",
-        photoURL: user.photoURL || "/default-avatar.png",
-        role: existingRole, // ← PERTAHANKAN ROLE YANG SUDAH ADA
-        lastLogin: new Date(),
-        // Jangan overwrite createdAt jika user sudah ada
-        createdAt: userSnap.exists() ? userSnap.data().createdAt : serverTimestamp()
-      }, { merge: true });
+      await setDoc(
+        userRef,
+        {
+          email: user.email,
+          displayName: user.displayName || "Anonim",
+          photoURL: user.photoURL || "/default-avatar.png",
+          role: existingRole, // ← PERTAHANKAN ROLE YANG SUDAH ADA
+          lastLogin: new Date(),
+          // Jangan overwrite createdAt jika user sudah ada
+          createdAt: userSnap.exists() ? userSnap.data().createdAt : serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       // Buat blog
       await addDoc(collection(db, "blogs"), {
@@ -162,10 +183,8 @@ export default function DashboardPage() {
         authorAvatar: user.photoURL || "/default-avatar.png",
         authorId: user.uid,
         authorEmail: user.email || "",
-        status: 'published',
-        githubUrl: githubUsername
-          ? `https://github.com/${githubUsername}`
-          : "",
+        status: "published",
+        githubUrl: githubUsername ? `https://github.com/${githubUsername}` : "",
         createdAt: serverTimestamp(),
       });
 
@@ -182,7 +201,7 @@ export default function DashboardPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    
+
     // Validasi jumlah file
     if (images.length + files.length > 6) {
       alert("Maksimal 6 gambar yang dapat diunggah");
@@ -190,17 +209,14 @@ export default function DashboardPage() {
     }
 
     // Validasi ukuran file (max 5MB)
-    const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       alert("Beberapa file melebihi ukuran maksimal 5MB");
       return;
     }
 
     setImages((prev) => [...prev, ...files]);
-    setPreviewUrls((prev) => [
-      ...prev,
-      ...files.map((file) => URL.createObjectURL(file)),
-    ]);
+    setPreviewUrls((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))]);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -212,27 +228,27 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white px-4 py-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-            Buat Blog Baru
-          </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Bagikan pengetahuan, pengalaman, dan karya terbaik Anda dengan komunitas
-          </p>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
+          {/* Back Button */}
+          <div className="mb-6">
+            <button onClick={() => router.push("/")} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group">
+              <div className="p-2 bg-white/5 rounded-lg group-hover:bg-white/10 transition-colors">
+                <FiArrowLeft className="text-lg" />
+              </div>
+              <span className="font-medium">Kembali ke Beranda</span>
+            </button>
+          </div>
+
+          {/* Title */}
+          <div className="text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent mb-4">Buat Blog Baru</h1>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">Bagikan pengetahuan, pengalaman, dan karya terbaik Anda dengan komunitas</p>
+          </div>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* FORM */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl"
-          >
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <FiFileText className="text-2xl text-blue-400" />
@@ -259,9 +275,7 @@ export default function DashboardPage() {
                   placeholder="Masukkan judul yang menarik..."
                   maxLength={100}
                 />
-                <div className="text-right text-xs text-gray-500 mt-1">
-                  {title.length}/100 karakter
-                </div>
+                <div className="text-right text-xs text-gray-500 mt-1">{title.length}/100 karakter</div>
               </div>
 
               <div>
@@ -279,9 +293,7 @@ export default function DashboardPage() {
                   placeholder="Tulis konten blog Anda di sini..."
                   maxLength={5000}
                 />
-                <div className="text-right text-xs text-gray-500 mt-1">
-                  {content.length}/5000 karakter
-                </div>
+                <div className="text-right text-xs text-gray-500 mt-1">{content.length}/5000 karakter</div>
               </div>
 
               {/* YouTube Section */}
@@ -293,7 +305,7 @@ export default function DashboardPage() {
                     <span className="text-xs text-gray-500">(Opsional, maks. 3 video)</span>
                   </div>
                 </label>
-                
+
                 {!isAddingYoutube && youtubeUrls.length < 3 && (
                   <button
                     type="button"
@@ -309,9 +321,7 @@ export default function DashboardPage() {
                 {isAddingYoutube && (
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Masukkan URL YouTube
-                      </label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Masukkan URL YouTube</label>
                       <input
                         type="url"
                         value={youtubeInput}
@@ -319,17 +329,11 @@ export default function DashboardPage() {
                         placeholder="https://www.youtube.com/watch?v=..."
                         className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all placeholder-gray-500"
                       />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Contoh: https://youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">Contoh: https://youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID</p>
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={addYouTubeUrl}
-                        className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
+                      <button type="button" onClick={addYouTubeUrl} className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium transition-colors">
                         Tambah
                       </button>
                       <button
@@ -353,25 +357,18 @@ export default function DashboardPage() {
                       <FiYoutube className="text-red-500" />
                       Video YouTube ({youtubeUrls.length}/3)
                     </h4>
-                    
+
                     <div className="grid gap-3">
                       {youtubeUrls.map((url, index) => {
                         const videoId = extractYouTubeId(url);
                         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                        
+
                         return (
-                          <div
-                            key={index}
-                            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3 group"
-                          >
+                          <div key={index} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3 group">
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden relative">
                               {videoId ? (
-                                <img
-                                  src={thumbnailUrl}
-                                  alt={`Thumbnail ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
+                                <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full bg-gray-600 flex items-center justify-center">
                                   <FiYoutube className="text-gray-400" />
@@ -381,21 +378,12 @@ export default function DashboardPage() {
 
                             {/* URL Info */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white truncate">
-                                Video {index + 1}
-                              </p>
-                              <p className="text-xs text-gray-400 truncate">
-                                {url}
-                              </p>
+                              <p className="text-sm text-white truncate">Video {index + 1}</p>
+                              <p className="text-xs text-gray-400 truncate">{url}</p>
                             </div>
 
                             {/* Remove Button */}
-                            <button
-                              type="button"
-                              onClick={() => removeYouTubeUrl(index)}
-                              className="text-red-400 hover:text-red-300 transition-colors p-1"
-                              title="Hapus video"
-                            >
+                            <button type="button" onClick={() => removeYouTubeUrl(index)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Hapus video">
                               <FiX className="text-lg" />
                             </button>
                           </div>
@@ -403,11 +391,7 @@ export default function DashboardPage() {
                       })}
                     </div>
 
-                    {youtubeUrls.length >= 3 && (
-                      <p className="text-xs text-yellow-400 text-center">
-                        Maksimal 3 video YouTube telah tercapai
-                      </p>
-                    )}
+                    {youtubeUrls.length >= 3 && <p className="text-xs text-yellow-400 text-center">Maksimal 3 video YouTube telah tercapai</p>}
                   </div>
                 )}
               </div>
@@ -421,20 +405,14 @@ export default function DashboardPage() {
                     <span className="text-xs text-gray-500">(Opsional, maks. 6 file)</span>
                   </div>
                 </label>
-                
+
                 <div className="flex items-center gap-3 mb-4">
                   <label className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-purple-500/25">
                     <FiImage className="text-lg" />
                     <span>Pilih Gambar</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
+                    <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
                   </label>
-                  
+
                   {images.length > 0 && (
                     <button
                       type="button"
@@ -451,37 +429,16 @@ export default function DashboardPage() {
 
                 <AnimatePresence>
                   {previewUrls.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"
-                    >
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
                       {previewUrls.map((url, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          className="relative group rounded-xl overflow-hidden border border-gray-600 bg-black/20"
-                        >
-                          <img
-                            src={url}
-                            alt={`preview-${i}`}
-                            className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
+                        <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="relative group rounded-xl overflow-hidden border border-gray-600 bg-black/20">
+                          <img src={url} alt={`preview-${i}`} className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(i)}
-                              className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors"
-                            >
+                            <button type="button" onClick={() => handleRemoveImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors">
                               <FiX className="text-white text-sm" />
                             </button>
                           </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs">
-                            {images[i]?.name}
-                          </div>
+                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs">{images[i]?.name}</div>
                         </motion.div>
                       ))}
                     </motion.div>
@@ -502,96 +459,125 @@ export default function DashboardPage() {
             </form>
           </motion.div>
 
-          {/* PREVIEW */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl h-fit sticky top-8"
-          >
+          {/* PREVIEW WITH CUSTOM GRID LAYOUT */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl h-fit sticky top-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-green-500/20 rounded-lg">
-                <FiFileText className="text-2xl text-green-400" />
+                <FiMaximize2 className="text-2xl text-green-400" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold">Preview Blog</h2>
-                <p className="text-gray-400 text-sm">Pratinjau tampilan blog</p>
+                <p className="text-gray-400 text-sm">Drag & resize untuk atur posisi bebas</p>
               </div>
             </div>
 
             {title || content || previewUrls.length > 0 || youtubeUrls.length > 0 ? (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-3 leading-tight">
-                    {title || "Judul Blog Anda"}
-                  </h3>
-                  <div className="flex items-center gap-3 text-sm text-gray-400">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={user.photoURL || "/default-avatar.png"}
-                        alt="Author"
-                        className="w-6 h-6 rounded-full"
-                      />
-                      <span>{user.displayName || "Anonim"}</span>
+              <div className="relative">
+                <GridLayout className="layout" layout={layout} cols={6} rowHeight={60} width={600} onLayoutChange={handleLayoutChange} draggableHandle=".drag-handle" compactType={null} preventCollision={true}>
+                  {/* TITLE BLOCK */}
+                  <div key="title" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                    <div className="drag-handle bg-blue-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
+                      <FiMove className="text-sm text-blue-400" />
+                      <span className="text-xs font-medium text-blue-400">Judul</span>
                     </div>
-                    <span>•</span>
-                    <span>{new Date().toLocaleDateString('id-ID')}</span>
+                    <div className="p-4">
+                      <h3 className="text-xl font-bold text-white mb-2 leading-tight line-clamp-2">{title || "Judul Blog Anda"}</h3>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <img src={user.photoURL || "/default-avatar.png"} alt="Author" className="w-5 h-5 rounded-full" />
+                        <span className="truncate">{user.displayName || "Anonim"}</span>
+                        <span>•</span>
+                        <span>{new Date().toLocaleDateString("id-ID", { month: "short", day: "numeric" })}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="prose prose-invert max-w-none">
-                  <p className="text-gray-300 leading-relaxed whitespace-pre-line">
-                    {content || "Konten blog Anda akan muncul di sini..."}
-                  </p>
-                </div>
+                  {/* CONTENT BLOCK */}
+                  <div key="content" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                    <div className="drag-handle bg-green-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
+                      <FiMove className="text-sm text-green-400" />
+                      <span className="text-xs font-medium text-green-400">Deskripsi</span>
+                    </div>
+                    <div className="p-4 overflow-auto h-[calc(100%-40px)]">
+                      <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line line-clamp-6">{content || "Konten blog Anda akan muncul di sini..."}</p>
+                    </div>
+                  </div>
 
-                {/* YouTube Preview */}
-                {youtubeUrls.length > 0 && (
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <FiYoutube className="text-red-500" />
-                      Video YouTube
-                    </h4>
-                    <div className="grid gap-4">
-                      {youtubeUrls.map((url, index) => {
-                        const videoId = extractYouTubeId(url);
-                        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                        
-                        return (
-                          <div key={index} className="relative aspect-video bg-black rounded-lg overflow-hidden border border-gray-600">
-                            <img
-                              src={thumbnailUrl}
-                              alt={`YouTube Video ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                                <FiYoutube className="text-white text-2xl" />
+                  {/* YOUTUBE BLOCK */}
+                  {youtubeUrls.length > 0 && (
+                    <div key="youtube" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                      <div className="drag-handle bg-red-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
+                        <FiMove className="text-sm text-red-400" />
+                        <span className="text-xs font-medium text-red-400">Video YouTube ({youtubeUrls.length})</span>
+                      </div>
+                      <div className="p-4 overflow-auto h-[calc(100%-40px)] space-y-3">
+                        {youtubeUrls.slice(0, 2).map((url, index) => {
+                          const videoId = extractYouTubeId(url);
+                          const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+                          return (
+                            <div key={index} className="relative aspect-video bg-black rounded overflow-hidden border border-gray-700">
+                              <img src={thumbnailUrl} alt={`YouTube ${index + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
+                                  <FiYoutube className="text-white text-lg" />
+                                </div>
                               </div>
                             </div>
-                            <div className="absolute bottom-3 left-3 bg-black/70 px-3 py-1 rounded text-sm">
-                              Video {index + 1}
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Images Preview */}
-                {previewUrls.length > 0 && (
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    {previewUrls.map((url, i) => (
-                      <img
-                        key={i}
-                        src={url}
-                        alt={`preview-${i}`}
-                        className="rounded-lg border border-gray-600 w-full h-40 object-cover shadow-lg"
-                      />
-                    ))}
-                  </div>
-                )}
+                  {/* IMAGES BLOCK */}
+                  {previewUrls.length > 0 && (
+                    <div key="images" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                      <div className="drag-handle bg-purple-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
+                        <FiMove className="text-sm text-purple-400" />
+                        <span className="text-xs font-medium text-purple-400">Gambar ({previewUrls.length})</span>
+                      </div>
+                      <div className="p-3 overflow-auto h-[calc(100%-40px)]">
+                        {previewUrls.length === 1 ? (
+                          // Single image - full size
+                          <img src={previewUrls[0]} alt="preview" className="rounded border border-gray-700 w-full h-full object-cover" />
+                        ) : previewUrls.length === 2 ? (
+                          // Two images - side by side
+                          <div className="grid grid-cols-2 gap-3 h-full">
+                            {previewUrls.map((url, i) => (
+                              <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full object-cover" />
+                            ))}
+                          </div>
+                        ) : previewUrls.length === 3 ? (
+                          // Three images - 2 top, 1 bottom
+                          <div className="grid grid-rows-2 gap-3 h-full">
+                            <div className="grid grid-cols-2 gap-3">
+                              {previewUrls.slice(0, 2).map((url, i) => (
+                                <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full object-cover" />
+                              ))}
+                            </div>
+                            <img src={previewUrls[2]} alt="preview-2" className="rounded border border-gray-700 w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          // Multiple images - grid layout
+                          <div className="grid grid-cols-2 gap-3 auto-rows-fr h-full">
+                            {previewUrls.slice(0, 6).map((url, i) => (
+                              <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full min-h-[120px] object-cover" />
+                            ))}
+                          </div>
+                        )}
+                        {previewUrls.length > 6 && <p className="text-xs text-gray-500 mt-2 text-center">+{previewUrls.length - 6} lainnya</p>}
+                      </div>
+                    </div>
+                  )}
+                </GridLayout>
+
+                {/* Info */}
+                <div className="mt-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-xs text-blue-300 flex items-center gap-2">
+                    <FiMaximize2 className="text-sm" />
+                    <span>Drag header untuk pindah posisi • Drag sudut kanan bawah untuk resize</span>
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="text-center py-12">
@@ -599,9 +585,7 @@ export default function DashboardPage() {
                   <FiFileText className="text-2xl text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-300 mb-2">Preview Belum Tersedia</h3>
-                <p className="text-gray-500 text-sm">
-                  Mulai menulis di form sebelah kiri untuk melihat preview blog di sini
-                </p>
+                <p className="text-gray-500 text-sm">Mulai menulis di form sebelah kiri untuk melihat preview blog di sini</p>
               </div>
             )}
           </motion.div>
