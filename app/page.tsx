@@ -133,8 +133,21 @@ export default function HomePage() {
             href="/"
             className="flex items-center gap-3 group flex-shrink-0"
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="font-bold text-white text-sm sm:text-lg">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+              {/* Ganti dengan logo riset Anda */}
+              <img 
+                src="/logoHMPTI.png" 
+                alt="Logo Riset TI"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback jika logo tidak ditemukan
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              {/* Fallback text jika logo tidak ada */}
+              <span className="font-bold text-white text-sm sm:text-lg hidden">
                 TI
               </span>
             </div>
