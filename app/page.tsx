@@ -135,7 +135,7 @@ export default function HomePage() {
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
               {/* Ganti dengan logo riset Anda */}
-              // Ganti path logo dengan absolute path
+              {/* // Ganti path logo dengan absolute path */}
               <img
                 src={`${process.env.NEXT_PUBLIC_BASE_URL || ""}/logoHMPTI.png`}
                 alt="Logo Riset TI"
