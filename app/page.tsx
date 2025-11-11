@@ -135,15 +135,16 @@ export default function HomePage() {
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
               {/* Ganti dengan logo riset Anda */}
-              <img 
-                src="/logoHMPTI.png" 
+              // Ganti path logo dengan absolute path
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_URL || ""}/logo_riset.png`}
                 alt="Logo Riset TI"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback jika logo tidak ditemukan
                   const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.nextElementSibling?.classList.remove('hidden');
+                  target.style.display = "none";
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = "flex";
                 }}
               />
               {/* Fallback text jika logo tidak ada */}
