@@ -29,6 +29,7 @@ interface Blog {
   images?: string[];
   createdAt: any;
   updatedAt?: any;
+  views?: number;
 }
 
 export default function AdminDashboard() {
@@ -260,6 +261,7 @@ export default function AdminDashboard() {
     draftBlogs: blogs.filter((blog) => blog.status === "draft").length,
     pendingBlogs: blogs.filter((blog) => !blog.status || blog.status === "pending").length,
     adminUsers: users.filter((user) => user.role === "admin").length,
+    totalViews: blogs.reduce((sum, blog) => sum + (blog.views || 0), 0),
   };
 
   // Show loading while checking auth or admin status
@@ -385,10 +387,10 @@ export default function AdminDashboard() {
                     color: "green",
                   },
                   {
-                    label: "Published",
-                    value: stats.publishedBlogs,
+                    label: "Total Views",
+                    value: stats.totalViews,
                     icon: FiEye,
-                    color: "purple",
+                    color: "cyan",
                   },
                   {
                     label: "Admin Users",
@@ -419,11 +421,22 @@ export default function AdminDashboard() {
                   <div className="space-y-3">
                     {blogs.slice(0, 5).map((blog) => (
                       <div key={blog.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 mr-3">
                           <p className="text-sm font-medium text-white truncate">{blog.title}</p>
-                          <p className="text-xs text-gray-400">{blog.authorName}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-gray-400">{blog.authorName}</p>
+                            <span className="text-gray-600">•</span>
+                            <div className="flex items-center gap-1 text-cyan-400">
+                              <FiEye className="text-xs" />
+                              <span className="text-xs">{blog.views || 0}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs ${blog.status === "published" ? "bg-green-500/20 text-green-400" : blog.status === "draft" ? "bg-yellow-500/20 text-yellow-400" : "bg-gray-500/20 text-gray-400"}`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ${
+                            blog.status === "published" ? "bg-green-500/20 text-green-400" : blog.status === "draft" ? "bg-yellow-500/20 text-yellow-400" : "bg-gray-500/20 text-gray-400"
+                          }`}
+                        >
                           {blog.status || "pending"}
                         </span>
                       </div>
@@ -629,6 +642,7 @@ export default function AdminDashboard() {
                         <th className="text-left p-4 text-sm font-medium text-gray-400">Judul</th>
                         <th className="text-left p-4 text-sm font-medium text-gray-400">Author</th>
                         <th className="text-left p-4 text-sm font-medium text-gray-400">Status</th>
+                        <th className="text-left p-4 text-sm font-medium text-gray-400">Views</th>
                         <th className="text-left p-4 text-sm font-medium text-gray-400">Tanggal</th>
                         <th className="text-left p-4 text-sm font-medium text-gray-400">Actions</th>
                       </tr>
@@ -653,6 +667,12 @@ export default function AdminDashboard() {
                             >
                               {blog.status || "pending"}
                             </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1 text-cyan-400">
+                              <FiEye className="text-sm" />
+                              <span className="text-sm sm:text-base font-medium">{blog.views || 0}</span>
+                            </div>
                           </td>
                           <td className="p-4 text-gray-300 text-xs sm:text-sm">{blog.createdAt?.toDate?.().toLocaleDateString("id-ID")}</td>
                           <td className="p-4">

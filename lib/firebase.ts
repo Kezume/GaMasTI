@@ -12,7 +12,7 @@ const firebaseConfig = {
   storageBucket: "gamasti-39241.firebasestorage.app",
   messagingSenderId: "891109580101",
   appId: "1:891109580101:web:e09e5b5db50502f4d1722c",
-  measurementId: "G-WX8X7B4GJG"
+  measurementId: "G-WX8X7B4GJG",
 };
 
 // Initialize Firebase
@@ -23,6 +23,10 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const provider = new GithubAuthProvider();
+
+// Request user profile information
+provider.addScope("read:user");
+provider.addScope("user:email");
 
 export const loginWithGitHub = async () => {
   try {

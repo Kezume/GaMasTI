@@ -31,6 +31,7 @@ interface Blog {
   githubUrl?: string;
   createdAt?: { seconds: number };
   status?: string;
+  views?: number;
 }
 
 // Helper function to get first image from contentBlocks
@@ -47,6 +48,33 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, userLoading] = useAuthState(auth);
+
+  // Helper function to get GitHub URL
+  const getGitHubUrl = (githubUrl?: string): string => {
+    if (!githubUrl) return "";
+
+    // Jika sudah format URL lengkap
+    if (githubUrl.startsWith("http://") || githubUrl.startsWith("https://")) {
+      return githubUrl;
+    }
+
+    // Jika format github.com/username
+    if (githubUrl.startsWith("github.com/")) {
+      return `https://${githubUrl}`;
+    }
+
+    // Jika hanya username
+    return `https://github.com/${githubUrl}`;
+  };
+
+  // Helper function to get GitHub username
+  const getGitHubUsername = (githubUrl?: string): string => {
+    if (!githubUrl) return "";
+
+    // Extract username dari berbagai format
+    const username = githubUrl.split("/").pop() || githubUrl;
+    return username.replace("@", "");
+  };
 
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -378,9 +406,9 @@ export default function BlogPage() {
                       <div>
                         <p className="font-semibold text-white text-xs">{blog.authorName}</p>
                         {blog.githubUrl ? (
-                          <a href={blog.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs">
+                          <a href={getGitHubUrl(blog.githubUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs">
                             <FiGithub className="text-xs" />
-                            <span className="text-xs">GitHub</span>
+                            <span className="text-xs">@{getGitHubUsername(blog.githubUrl)}</span>
                           </a>
                         ) : (
                           <div className="flex items-center gap-1 text-gray-500 text-xs">
@@ -391,12 +419,20 @@ export default function BlogPage() {
                       </div>
                     </div>
 
-                    {blog.createdAt && (
-                      <div className="flex items-center gap-1 text-cyan-400 text-xs bg-cyan-500/10 px-2 py-1 rounded-full border border-cyan-500/20">
-                        <FiCalendar className="text-xs" />
-                        <span className="text-xs">{formatDate(blog.createdAt.seconds)}</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col gap-1 items-end">
+                      {blog.views !== undefined && (
+                        <div className="flex items-center gap-1 text-cyan-400 text-xs">
+                          <FiEye className="text-xs" />
+                          <span className="text-xs">{blog.views}</span>
+                        </div>
+                      )}
+                      {blog.createdAt && (
+                        <div className="flex items-center gap-1 text-gray-400 text-xs">
+                          <FiCalendar className="text-xs" />
+                          <span className="text-xs">{formatDate(blog.createdAt.seconds)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Action Buttons - Responsif */}

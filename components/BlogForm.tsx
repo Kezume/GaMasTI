@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { FiPlus, FiTrash2, FiType, FiFileText, FiYoutube, FiImage, FiArrowUp, FiArrowDown, FiCode } from "react-icons/fi";
@@ -123,9 +123,11 @@ export default function BlogForm() {
     const loadingToast = toast.loading("Menambahkan blog...");
 
     try {
-      // Ambil data GitHub dari providerData
-      const githubProfile = user.providerData.find((p) => p.providerId === "github.com");
-      const githubUsername = githubProfile?.uid;
+      // Ambil username dari Firestore users collection
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+
+      const githubUsername = userData?.githubUsername || "";
       const githubUrl = githubUsername ? `https://github.com/${githubUsername}` : "";
 
       await addDoc(collection(db, "blogs"), {

@@ -182,13 +182,13 @@ export default function DashboardPage() {
     const loadingToast = toast.loading("Mempublikasikan blog...");
 
     try {
-      const githubProfile = user.providerData.find((p) => p.providerId === "github.com");
-      const githubUsername = githubProfile?.uid || githubProfile?.displayName || user.displayName || "";
-
-      // FIX: Jangan overwrite role user yang sudah ada
+      // Ambil username dari Firestore users collection
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
-      const existingRole = userSnap.exists() ? userSnap.data().role : "user";
+      const userData = userSnap.data();
+
+      const githubUsername = userData?.githubUsername || "";
+      const existingRole = userSnap.exists() ? userData?.role : "user";
 
       // Update user data TANPA overwrite role
       await setDoc(
@@ -200,7 +200,7 @@ export default function DashboardPage() {
           role: existingRole, // ← PERTAHANKAN ROLE YANG SUDAH ADA
           lastLogin: new Date(),
           // Jangan overwrite createdAt jika user sudah ada
-          createdAt: userSnap.exists() ? userSnap.data().createdAt : serverTimestamp(),
+          createdAt: userSnap.exists() ? userData?.createdAt : serverTimestamp(),
         },
         { merge: true }
       );

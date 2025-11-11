@@ -7,7 +7,30 @@ import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX, FiSettings, FiYoutube, FiPlay, FiImage, FiPlus, FiCheck, FiEdit2, FiTrash2, FiType, FiFileText, FiArrowUp, FiArrowDown, FiCode } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiCalendar,
+  FiGithub,
+  FiShare2,
+  FiClock,
+  FiEdit3,
+  FiSave,
+  FiX,
+  FiSettings,
+  FiYoutube,
+  FiPlay,
+  FiImage,
+  FiPlus,
+  FiCheck,
+  FiEdit2,
+  FiTrash2,
+  FiType,
+  FiFileText,
+  FiArrowUp,
+  FiArrowDown,
+  FiCode,
+  FiEye,
+} from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 import YouTubeEmbed from "@/components/YoutubeEmbed";
 import { toast } from "react-toastify";
@@ -25,6 +48,7 @@ interface Blog {
   githubUrl?: string;
   status?: string;
   createdAt?: { seconds: number };
+  views?: number;
 }
 
 // Interface untuk Content Blocks
@@ -68,6 +92,33 @@ export default function BlogDetail() {
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
 
+  // Helper function to get GitHub URL
+  const getGitHubUrl = (githubUrl?: string): string => {
+    if (!githubUrl) return "";
+
+    // Jika sudah format URL lengkap
+    if (githubUrl.startsWith("http://") || githubUrl.startsWith("https://")) {
+      return githubUrl;
+    }
+
+    // Jika format github.com/username
+    if (githubUrl.startsWith("github.com/")) {
+      return `https://${githubUrl}`;
+    }
+
+    // Jika hanya username
+    return `https://github.com/${githubUrl}`;
+  };
+
+  // Helper function to get GitHub username
+  const getGitHubUsername = (githubUrl?: string): string => {
+    if (!githubUrl) return "";
+
+    // Extract username dari berbagai format
+    const username = githubUrl.split("/").pop() || githubUrl;
+    return username.replace("@", "");
+  };
+
   useEffect(() => {
     const checkAdmin = async () => {
       if (user) {
@@ -99,6 +150,15 @@ export default function BlogDetail() {
           setEditContentBlocks(blogData.contentBlocks || []);
           setEditYoutubeUrls(blogData.youtubeUrls || []);
           setEditImages(blogData.images || []);
+
+          // Increment views count
+          const currentViews = blogData.views || 0;
+          await updateDoc(docRef, {
+            views: currentViews + 1,
+          });
+
+          // Update local state with incremented views
+          setBlog({ ...blogData, views: currentViews + 1 });
         } else {
           router.push("/404");
         }
@@ -599,9 +659,9 @@ export default function BlogDetail() {
                 <div>
                   <p className="font-semibold text-lg">{blog.authorName || "Anonim"}</p>
                   {blog.githubUrl && (
-                    <a href={blog.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm">
+                    <a href={getGitHubUrl(blog.githubUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm">
                       <FiGithub className="text-sm" />
-                      {blog.githubUrl.split("/").pop()}
+                      <span>@{getGitHubUsername(blog.githubUrl)}</span>
                     </a>
                   )}
                 </div>
@@ -624,6 +684,11 @@ export default function BlogDetail() {
                     </div>
                   </>
                 )}
+                {/* Views Counter */}
+                <div className="flex items-center gap-1 text-cyan-400">
+                  <FiEye className="text-sm" />
+                  <span>{blog.views || 0} views</span>
+                </div>
               </div>
             </motion.div>
 
@@ -893,7 +958,7 @@ export default function BlogDetail() {
                           </label>
                         ) : (
                           <div className="relative">
-                            <img src={block.content} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
+                            <img src={block.content} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
                             <button type="button" onClick={() => updateContentBlock(block.id, "")} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full" title="Ganti gambar">
                               <FiTrash2 />
                             </button>
@@ -986,8 +1051,8 @@ export default function BlogDetail() {
                       )}
 
                       {block.type === "image" && block.content && (
-                        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/20 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setSelectedImage(block.content)}>
-                          <img src={block.content} alt={`content-${index}`} className="w-full h-auto object-cover" />
+                        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/20 cursor-pointer hover:opacity-90 transition-opacity max-h-96" onClick={() => setSelectedImage(block.content)}>
+                          <img src={block.content} alt={`content-${index}`} className="w-full h-full max-h-96 object-cover" />
                         </div>
                       )}
 

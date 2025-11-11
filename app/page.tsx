@@ -30,6 +30,7 @@ interface Blog {
   githubUrl?: string;
   createdAt?: { seconds: number };
   status?: string;
+  views?: number;
 }
 
 // Helper function to get first image from contentBlocks
@@ -469,7 +470,15 @@ export default function HomePage() {
                       <span className="text-xs text-gray-300 font-medium">{blog.authorName || "Anonim"}</span>
                     </div>
 
-                    {blog.createdAt && <div className="text-xs text-gray-500">{formatDate(blog.createdAt.seconds)}</div>}
+                    <div className="flex items-center gap-2">
+                      {blog.views !== undefined && (
+                        <div className="flex items-center gap-1 text-cyan-400">
+                          <FiEye className="text-xs" />
+                          <span className="text-xs">{blog.views}</span>
+                        </div>
+                      )}
+                      {blog.createdAt && <div className="text-xs text-gray-500">{formatDate(blog.createdAt.seconds)}</div>}
+                    </div>
                   </div>
 
                   {/* Read More Button */}
