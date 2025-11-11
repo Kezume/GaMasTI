@@ -107,7 +107,7 @@ export default function AdminDashboard() {
         id: doc.id,
         ...doc.data(),
       })) as Blog[];
-      
+
       // Debug log untuk memeriksa struktur data blog
       console.log("Fetched blogs:", blogsData);
       blogsData.forEach((blog, index) => {
@@ -116,10 +116,10 @@ export default function AdminDashboard() {
           title: blog.title,
           content: blog.content,
           hasContent: !!blog.content,
-          contentType: typeof blog.content
+          contentType: typeof blog.content,
         });
       });
-      
+
       setBlogs(blogsData);
     } catch (error) {
       console.error("Error fetching admin data:", error);
@@ -365,17 +365,14 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400">Panel Administrasi</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-400 hidden sm:block">
                 Logged in as: <span className="text-blue-400">{user.email}</span>
               </div>
-              
+
               {/* TOMBOL KEMBALI KE MENU AWAL */}
-              <Link
-                href="/"
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400"
-              >
+              <Link href="/" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl font-medium backdrop-blur-sm transition-all text-sm hover:text-blue-400">
                 <FiHome className="text-lg" />
                 <span className="hidden sm:inline">Kembali ke Beranda</span>
                 <span className="sm:hidden">Beranda</span>
@@ -413,7 +410,7 @@ export default function AdminDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 className="text-2xl font-bold">Dashboard Overview</h2>
-                
+
                 {/* TOMBOL KEMBALI DI CONTENT AREA (MOBILE FRIENDLY) */}
                 <Link
                   href="/"
@@ -474,7 +471,6 @@ export default function AdminDashboard() {
                   <div className="space-y-3">
                     {blogs.slice(0, 5).map((blog) => (
                       <div key={blog.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-<<<<<<< HEAD
                         <div className="flex-1 min-w-0 mr-3">
                           <p className="text-sm font-medium text-white truncate">{blog.title}</p>
                           <div className="flex items-center gap-2 mt-1">
@@ -485,11 +481,6 @@ export default function AdminDashboard() {
                               <span className="text-xs">{blog.views || 0}</span>
                             </div>
                           </div>
-=======
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{blog.title || "Judul tidak tersedia"}</p>
-                          <p className="text-xs text-gray-400">{blog.authorName || "Author tidak diketahui"}</p>
->>>>>>> 4380a0e233e58f132cb2abc23ee4c90b9b92a442
                         </div>
                         <span
                           className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ${
@@ -539,7 +530,7 @@ export default function AdminDashboard() {
                     <FiPlus className="text-lg" />
                     <span>Tambah Admin</span>
                   </button>
-                  
+
                   {/* TOMBOL KEMBALI DI USERS TAB */}
                   <Link
                     href="/"
@@ -704,7 +695,7 @@ export default function AdminDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 className="text-2xl font-bold">Manajemen Blog</h2>
-                
+
                 {/* TOMBOL KEMBALI DI BLOGS TAB */}
                 <Link
                   href="/"
@@ -750,7 +741,6 @@ export default function AdminDashboard() {
                               {blog.status || "pending"}
                             </span>
                           </td>
-<<<<<<< HEAD
                           <td className="p-4">
                             <div className="flex items-center gap-1 text-cyan-400">
                               <FiEye className="text-sm" />
@@ -758,12 +748,6 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="p-4 text-gray-300 text-xs sm:text-sm">{blog.createdAt?.toDate?.().toLocaleDateString("id-ID")}</td>
-=======
-                          <td className="p-4 text-gray-300 text-xs sm:text-sm">
-                            {/* PERBAIKAN: Gunakan helper function untuk tanggal */}
-                            {getBlogDate(blog.createdAt)}
-                          </td>
->>>>>>> 4380a0e233e58f132cb2abc23ee4c90b9b92a442
                           <td className="p-4">
                             <div className="flex items-center gap-1 sm:gap-2">
                               {/* Publish/Unpublish */}

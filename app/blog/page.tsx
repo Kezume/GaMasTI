@@ -9,6 +9,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 import { FiGithub, FiCalendar, FiSearch, FiFilter, FiBook, FiUser, FiHome, FiPlus, FiEye, FiYoutube, FiImage } from "react-icons/fi";
+import { loginWithGitHub } from "@/lib/auth";
+import { toast } from "react-toastify";
 
 // Interface Blog
 interface ContentBlock {
@@ -48,6 +50,17 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, userLoading] = useAuthState(auth);
+
+  // Handle GitHub Login
+  const handleGitHubLogin = async () => {
+    try {
+      await loginWithGitHub();
+      toast.success("Login berhasil! Selamat datang!");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Gagal login. Silakan coba lagi.");
+    }
+  };
 
   // Helper function to get GitHub URL
   const getGitHubUrl = (githubUrl?: string): string => {
@@ -215,13 +228,13 @@ export default function BlogPage() {
           )}
 
           {!userLoading && !user && (
-            <Link
-              href="/auth/login"
+            <button
+              onClick={handleGitHubLogin}
               className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-medium transition-all hover:scale-105 shadow-lg hover:shadow-amber-500/25 relative z-10 text-sm sm:text-base"
             >
-              <FiPlus className="text-base sm:text-lg" />
-              <span>Login untuk Buat Blog</span>
-            </Link>
+              <FiGithub className="text-base sm:text-lg" />
+              <span>Login GitHub untuk Buat Blog</span>
+            </button>
           )}
         </motion.div>
       </motion.div>
@@ -308,13 +321,13 @@ export default function BlogPage() {
                 </Link>
               )}
               {!userLoading && !user && !searchTerm && (
-                <Link
-                  href="/auth/login"
+                <button
+                  onClick={handleGitHubLogin}
                   className="inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 px-5 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all shadow-lg hover:shadow-amber-500/25 text-sm sm:text-base"
                 >
-                  <FiPlus className="text-lg sm:text-xl" />
-                  <span>Login untuk Mulai Menulis</span>
-                </Link>
+                  <FiGithub className="text-lg sm:text-xl" />
+                  <span>Login GitHub untuk Mulai Menulis</span>
+                </button>
               )}
               {searchTerm && (
                 <button

@@ -134,7 +134,7 @@ export default function BlogForm() {
         title: title.trim(),
         contentBlocks,
         authorId: user.uid,
-        authorName: user.displayName,
+        authorName: githubUsername || user.displayName || "Anonim",
         authorAvatar: user.photoURL,
         githubUrl,
         createdAt: serverTimestamp(),

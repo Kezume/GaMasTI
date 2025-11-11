@@ -209,7 +209,7 @@ export default function DashboardPage() {
       await addDoc(collection(db, "blogs"), {
         title: title.trim(),
         contentBlocks,
-        authorName: user.displayName || "Anonim",
+        authorName: githubUsername || user.displayName || "Anonim",
         authorAvatar: user.photoURL || "/default-avatar.png",
         authorId: user.uid,
         authorEmail: user.email || "",
