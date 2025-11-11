@@ -1,40 +1,169 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { motion } from "framer-motion";
-import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiArrowLeft, FiEye, FiTrash2, FiArrowUp, FiArrowDown, FiEdit2, FiCode } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiArrowLeft, FiEye, FiTrash2, FiArrowUp, FiArrowDown, FiEdit2, FiCode, FiLayout, FiDownload, FiLink, FiVideo, FiPlus } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import ConfirmModal from "@/components/ConfirmModal";
 import YoutubeEmbed from "@/components/YoutubeEmbed";
 
 // Interface untuk Content Blocks
-type ContentBlockType = "subtitle" | "text" | "youtube" | "image" | "code";
+type ContentBlockType = "subtitle" | "text" | "youtube" | "image" | "code" | "file" | "video";
 
 interface ContentBlock {
   id: string;
   type: ContentBlockType;
   content: string;
   language?: string;
+  fileName?: string; // untuk file block
+  fileUrl?: string; // untuk file/video block
 }
+
+// Template Formasi
+interface BlogTemplate {
+  name: string;
+  description: string;
+  icon: string;
+  blocks: Omit<ContentBlock, "id">[];
+}
+
+const blogTemplates: BlogTemplate[] = [
+  {
+    name: "Tutorial Coding",
+    description: "Template untuk tutorial pemrograman dengan code snippets",
+    icon: "💻",
+    blocks: [
+      { type: "subtitle", content: "Pendahuluan" },
+      { type: "text", content: "Jelaskan tujuan dan apa yang akan dipelajari di tutorial ini..." },
+      { type: "subtitle", content: "Instalasi & Setup" },
+      { type: "text", content: "Langkah-langkah instalasi tools yang diperlukan..." },
+      { type: "code", content: "// Contoh code installation\nnpm install package-name", language: "javascript" },
+      { type: "subtitle", content: "Implementasi" },
+      { type: "text", content: "Penjelasan implementasi step by step..." },
+      { type: "code", content: "// Tulis code implementation di sini", language: "javascript" },
+      { type: "subtitle", content: "Kesimpulan" },
+      { type: "text", content: "Ringkasan dan next steps..." },
+    ],
+  },
+  {
+    name: "Review Project",
+    description: "Template untuk review atau showcase project",
+    icon: "🚀",
+    blocks: [
+      { type: "subtitle", content: "Overview Project" },
+      { type: "text", content: "Deskripsi singkat tentang project..." },
+      { type: "image", content: "" },
+      { type: "subtitle", content: "Teknologi yang Digunakan" },
+      { type: "text", content: "- Framework: \n- Database: \n- Tools: " },
+      { type: "subtitle", content: "Fitur Utama" },
+      { type: "text", content: "1. Fitur pertama...\n2. Fitur kedua...\n3. Fitur ketiga..." },
+      { type: "subtitle", content: "Demo" },
+      { type: "youtube", content: "" },
+      { type: "subtitle", content: "Source Code" },
+      { type: "text", content: "Link repository: " },
+    ],
+  },
+  {
+    name: "Blog Article",
+    description: "Template untuk artikel blog umum",
+    icon: "📝",
+    blocks: [
+      { type: "text", content: "Paragraf pembuka yang menarik perhatian pembaca..." },
+      { type: "image", content: "" },
+      { type: "subtitle", content: "Poin Pertama" },
+      { type: "text", content: "Penjelasan detail tentang poin pertama..." },
+      { type: "subtitle", content: "Poin Kedua" },
+      { type: "text", content: "Penjelasan detail tentang poin kedua..." },
+      { type: "subtitle", content: "Poin Ketiga" },
+      { type: "text", content: "Penjelasan detail tentang poin ketiga..." },
+      { type: "subtitle", content: "Kesimpulan" },
+      { type: "text", content: "Rangkuman dan call-to-action..." },
+    ],
+  },
+  {
+    name: "Video Tutorial",
+    description: "Template untuk konten berbasis video YouTube",
+    icon: "🎥",
+    blocks: [
+      { type: "text", content: "Pengantar singkat tentang apa yang akan dijelaskan di video..." },
+      { type: "youtube", content: "" },
+      { type: "subtitle", content: "Poin-Poin Penting" },
+      { type: "text", content: "Timestamps:\n0:00 - Intro\n2:30 - Part 1\n5:45 - Part 2\n10:00 - Conclusion" },
+      { type: "subtitle", content: "Resources" },
+      { type: "text", content: "Link dan resources yang disebutkan di video..." },
+      { type: "code", content: "// Code snippets dari video\n", language: "javascript" },
+    ],
+  },
+  {
+    name: "Blank Canvas",
+    description: "Mulai dari kosong, bebas berkreasi",
+    icon: "✨",
+    blocks: [],
+  },
+];
 
 export default function DashboardPage() {
   const [user, loading] = useAuthState(auth);
   const [title, setTitle] = useState("");
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showBlockDropdown, setShowBlockDropdown] = useState(false);
   const router = useRouter();
 
   // Confirm modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
 
+  // Template confirmation modal state
+  const [showTemplateConfirm, setShowTemplateConfirm] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<BlogTemplate | null>(null);
+
   // Fungsi untuk Content Blocks
   const generateId = () => Math.random().toString(36).substring(2, 11);
+
+  // Handler untuk memilih template
+  const handleTemplateSelect = (template: BlogTemplate) => {
+    if (contentBlocks.length > 0) {
+      // Jika sudah ada konten, tampilkan modal konfirmasi
+      setSelectedTemplate(template);
+      setShowTemplateConfirm(true);
+    } else {
+      // Jika belum ada konten, langsung apply
+      applyTemplate(template);
+    }
+  };
+
+  // Fungsi untuk apply template
+  const applyTemplate = (template: BlogTemplate) => {
+    const blocksWithIds = template.blocks.map((block) => ({
+      ...block,
+      id: generateId(),
+    }));
+    setContentBlocks(blocksWithIds);
+    setShowTemplates(false);
+    setShowTemplateConfirm(false);
+    setSelectedTemplate(null);
+    toast.success(`Template "${template.name}" berhasil diterapkan! ✨`);
+  };
+
+  // Handler untuk konfirmasi apply template
+  const handleConfirmTemplate = () => {
+    if (selectedTemplate) {
+      applyTemplate(selectedTemplate);
+    }
+  };
+
+  // Handler untuk cancel template
+  const handleCancelTemplate = () => {
+    setShowTemplateConfirm(false);
+    setSelectedTemplate(null);
+  };
 
   const addContentBlock = (type: ContentBlockType) => {
     const newBlock: ContentBlock = {
@@ -121,6 +250,97 @@ export default function DashboardPage() {
     return extractYouTubeId(url) !== null;
   };
 
+  // Extract Google Drive file ID
+  const extractGoogleDriveId = (url: string): string | null => {
+    // Match various Google Drive URL formats
+    const patterns = [
+      /\/file\/d\/([a-zA-Z0-9_-]+)/, // /file/d/FILE_ID
+      /id=([a-zA-Z0-9_-]+)/, // ?id=FILE_ID
+      /\/folders\/([a-zA-Z0-9_-]+)/, // /folders/FOLDER_ID
+      /\/d\/([a-zA-Z0-9_-]+)/, // /d/FILE_ID
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  const isValidGoogleDriveUrl = (url: string): boolean => {
+    return url.includes("drive.google.com") && extractGoogleDriveId(url) !== null;
+  };
+
+  const getGoogleDriveEmbedUrl = (url: string): string => {
+    const fileId = extractGoogleDriveId(url);
+    if (!fileId) return url;
+    return `https://drive.google.com/file/d/${fileId}/preview`;
+  };
+
+  const getGoogleDriveDownloadUrl = (url: string): string => {
+    const fileId = extractGoogleDriveId(url);
+    if (!fileId) return url;
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  };
+
+  // Upload file to Cloudinary
+  const uploadFileToCloudinary = async (file: File): Promise<{ url: string; fileName: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    return {
+      url: data.secure_url,
+      fileName: file.name,
+    };
+  };
+
+  const uploadBlockFile = async (id: string, file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran file maksimal 10MB");
+      return;
+    }
+
+    setUploading(true);
+    const loadingToast = toast.loading("Mengunggah file...");
+    try {
+      const { url, fileName } = await uploadFileToCloudinary(file);
+      setContentBlocks(
+        contentBlocks.map((block) =>
+          block.id === id
+            ? {
+                ...block,
+                content: fileName,
+                fileUrl: url,
+                fileName: fileName,
+              }
+            : block
+        )
+      );
+      toast.update(loadingToast, {
+        render: "File berhasil diunggah!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.update(loadingToast, {
+        render: "Gagal mengunggah file",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Loading state
   if (loading)
     return (
@@ -186,6 +406,26 @@ export default function DashboardPage() {
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
       const userData = userSnap.data();
+
+      // Check if user is blocked
+      if (userData?.blockedUntil) {
+        const blockedUntil = userData.blockedUntil.toDate ? userData.blockedUntil.toDate() : new Date(userData.blockedUntil);
+        if (blockedUntil > new Date()) {
+          const blockedUntilDate = blockedUntil.toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          setUploading(false);
+          toast.update(loadingToast, {
+            render: `Akun Anda diblokir hingga ${blockedUntilDate}. Anda tidak dapat mempublikasikan blog.`,
+            type: "error",
+            isLoading: false,
+            autoClose: 5000,
+          });
+          return;
+        }
+      }
 
       const githubUsername = userData?.githubUsername || "";
       const existingRole = userSnap.exists() ? userData?.role : "user";
@@ -298,6 +538,56 @@ export default function DashboardPage() {
                 <div className="text-right text-xs text-gray-500 mt-1">{title.length}/100 karakter</div>
               </div>
 
+              {/* Template Selector */}
+              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FiLayout className="text-blue-400 text-lg" />
+                    <span className="text-sm font-medium text-blue-300">Template Formasi (Opsional)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-all text-blue-300 hover:text-blue-200"
+                  >
+                    {showTemplates ? "Tutup" : "Pilih Template"}
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {showTemplates && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }} className="overflow-hidden">
+                      <div className="grid grid-cols-1 gap-2 mt-3">
+                        {blogTemplates.map((template) => (
+                          <motion.button
+                            key={template.name}
+                            type="button"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleTemplateSelect(template)}
+                            className="flex items-start gap-3 p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 rounded-lg transition-all text-left group"
+                          >
+                            <span className="text-2xl flex-shrink-0">{template.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors">{template.name}</h4>
+                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{template.description}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-purple-400">{template.blocks.length > 0 ? `${template.blocks.length} blocks` : "Blank canvas"}</span>
+                              </div>
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex items-start gap-2 mt-3 text-xs text-gray-400">
+                  <span className="flex-shrink-0">💡</span>
+                  <p>Template membantu Anda memulai dengan struktur konten yang sudah siap pakai. Pilih salah satu atau mulai dari blank canvas.</p>
+                </div>
+              </div>
+
               {/* Content Blocks Section */}
               <div>
                 <label className="block mb-3 text-sm font-medium text-gray-300">
@@ -320,7 +610,9 @@ export default function DashboardPage() {
                             {block.type === "youtube" && <FiYoutube className="text-red-400" />}
                             {block.type === "image" && <FiImage className="text-purple-400" />}
                             {block.type === "code" && <FiCode className="text-orange-400" />}
-                            <span className="text-sm font-medium capitalize">{block.type}</span>
+                            {block.type === "file" && <FiDownload className="text-cyan-400" />}
+                            {block.type === "video" && <FiVideo className="text-pink-400" />}
+                            <span className="text-sm font-medium capitalize">{block.type === "file" ? "File Download" : block.type === "video" ? "Video (Drive)" : block.type}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button
@@ -390,7 +682,7 @@ export default function DashboardPage() {
                         {block.type === "image" && (
                           <div>
                             {!block.content ? (
-                              <label className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-4 py-3 rounded-lg cursor-pointer transition-all">
+                              <label className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-3 rounded-lg cursor-pointer transition-all">
                                 <FiImage />
                                 <span>Pilih Gambar</span>
                                 <input
@@ -448,27 +740,29 @@ export default function DashboardPage() {
                                 const newBlocks = contentBlocks.map((b) => (b.id === block.id ? { ...b, language: e.target.value } : b));
                                 setContentBlocks(newBlocks);
                               }}
-                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                              className="w-full bg-black/80 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-white"
+                              style={{ backgroundColor: '#0a0a0a' }}
                             >
-                              <option value="javascript">JavaScript</option>
-                              <option value="typescript">TypeScript</option>
-                              <option value="python">Python</option>
-                              <option value="java">Java</option>
-                              <option value="cpp">C++</option>
-                              <option value="csharp">C#</option>
-                              <option value="html">HTML</option>
-                              <option value="css">CSS</option>
-                              <option value="sql">SQL</option>
-                              <option value="bash">Bash</option>
-                              <option value="json">JSON</option>
-                              <option value="xml">XML</option>
+                              <option value="javascript" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>JavaScript</option>
+                              <option value="typescript" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>TypeScript</option>
+                              <option value="python" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Python</option>
+                              <option value="java" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Java</option>
+                              <option value="cpp" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>C++</option>
+                              <option value="csharp" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>C#</option>
+                              <option value="html" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>HTML</option>
+                              <option value="css" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>CSS</option>
+                              <option value="sql" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>SQL</option>
+                              <option value="bash" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Bash</option>
+                              <option value="json" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>JSON</option>
+                              <option value="xml" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>XML</option>
                             </select>
                             <textarea
                               value={block.content}
                               onChange={(e) => updateContentBlock(block.id, e.target.value)}
                               placeholder="Paste kode Anda di sini..."
                               rows={10}
-                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none font-mono text-sm"
+                              className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none font-mono text-sm text-gray-100"
+                              style={{ backgroundColor: '#0a0a0a' }}
                               spellCheck={false}
                             />
                             {block.content && (
@@ -478,33 +772,247 @@ export default function DashboardPage() {
                             )}
                           </div>
                         )}
+
+                        {/* File Download Block */}
+                        {block.type === "file" && (
+                          <div className="space-y-3">
+                            <div className="text-sm text-gray-400 mb-2">Upload file atau masukkan link download</div>
+
+                            {!block.fileUrl ? (
+                              <div className="space-y-3">
+                                {/* File Upload */}
+                                <label className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-3 rounded-lg cursor-pointer transition-all">
+                                  <FiUpload />
+                                  <span>Upload File (Max 10MB)</span>
+                                  <input
+                                    type="file"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        uploadBlockFile(block.id, file);
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+
+                                <div className="text-center text-xs text-gray-500">atau</div>
+
+                                {/* Manual Link Input */}
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    value={block.fileName || ""}
+                                    onChange={(e) => {
+                                      const newBlocks = contentBlocks.map((b) => (b.id === block.id ? { ...b, fileName: e.target.value } : b));
+                                      setContentBlocks(newBlocks);
+                                    }}
+                                    placeholder="Nama file (contoh: Tutorial.pdf)"
+                                    className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                  />
+                                  <input
+                                    type="url"
+                                    value={block.content}
+                                    onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                                    placeholder="Link download (Google Drive, Dropbox, dll)"
+                                    className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                  />
+                                  {block.content && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newBlocks = contentBlocks.map((b) => (b.id === block.id ? { ...b, fileUrl: b.content } : b));
+                                        setContentBlocks(newBlocks);
+                                        toast.success("Link download ditambahkan!");
+                                      }}
+                                      className="w-full bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-all"
+                                    >
+                                      Simpan Link
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <FiDownload className="text-blue-400 text-xl" />
+                                    <div>
+                                      <p className="text-sm font-medium text-white">{block.fileName || block.content}</p>
+                                      <a href={block.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 break-all">
+                                        {block.fileUrl}
+                                      </a>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newBlocks = contentBlocks.map((b) => (b.id === block.id ? { ...b, fileUrl: undefined, content: "", fileName: "" } : b));
+                                      setContentBlocks(newBlocks);
+                                    }}
+                                    className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors ml-2"
+                                  >
+                                    <FiX className="text-white" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Video Block (Google Drive) */}
+                        {block.type === "video" && (
+                          <div className="space-y-3">
+                            <div className="text-sm text-gray-400 mb-2">Masukkan link Google Drive video</div>
+                            <input
+                              type="url"
+                              value={block.content}
+                              onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                              placeholder="https://drive.google.com/file/d/..."
+                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                            />
+                            {block.content && isValidGoogleDriveUrl(block.content) && (
+                              <div className="mt-3 bg-black/30 rounded-lg overflow-hidden border border-purple-500/30">
+                                <iframe src={getGoogleDriveEmbedUrl(block.content)} className="w-full aspect-video" allow="autoplay" allowFullScreen></iframe>
+                              </div>
+                            )}
+                            {block.content && !isValidGoogleDriveUrl(block.content) && <div className="text-xs text-yellow-400 mt-2">⚠️ URL Google Drive tidak valid</div>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Add Block Buttons */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <button type="button" onClick={() => addContentBlock("subtitle")} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition-all">
-                    <FiType />
-                    <span className="text-sm">Subjudul</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowBlockDropdown(!showBlockDropdown)}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-3 rounded-xl font-medium transition-all shadow-lg"
+                  >
+                    <FiPlus className="text-lg" />
+                    <span>Tambah Konten Blog</span>
                   </button>
-                  <button type="button" onClick={() => addContentBlock("text")} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-3 rounded-lg transition-all">
-                    <FiFileText />
-                    <span className="text-sm">Teks</span>
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("youtube")} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg transition-all">
-                    <FiYoutube />
-                    <span className="text-sm">YouTube</span>
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("image")} className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg transition-all">
-                    <FiImage />
-                    <span className="text-sm">Gambar</span>
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("code")} className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 px-4 py-3 rounded-lg transition-all">
-                    <FiCode />
-                    <span className="text-sm">Kode</span>
-                  </button>
+
+                  {/* Dropdown Menu */}
+                  <AnimatePresence>
+                    {showBlockDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute z-10 w-full mt-2 bg-gray-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                      >
+                        <div className="py-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("subtitle");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiType className="text-blue-400 text-lg" />
+                            <div>
+                              <p className="font-medium">Subjudul</p>
+                              <p className="text-xs text-gray-400">Tambah heading section</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("text");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiFileText className="text-green-400 text-lg" />
+                            <div>
+                              <p className="font-medium">Teks</p>
+                              <p className="text-xs text-gray-400">Paragraf konten</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("youtube");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiYoutube className="text-red-400 text-lg" />
+                            <div>
+                              <p className="font-medium">YouTube</p>
+                              <p className="text-xs text-gray-400">Embed video YouTube</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("image");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiImage className="text-purple-400 text-lg" />
+                            <div>
+                              <p className="font-medium">Gambar</p>
+                              <p className="text-xs text-gray-400">Upload gambar (Max 5MB)</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("code");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiCode className="text-orange-400 text-lg" />
+                            <div>
+                              <p className="font-medium">Kode</p>
+                              <p className="text-xs text-gray-400">Code snippet dengan syntax</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("file");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiDownload className="text-cyan-400 text-lg" />
+                            <div>
+                              <p className="font-medium">File Download</p>
+                              <p className="text-xs text-gray-400">Link download file (Max 10MB)</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addContentBlock("video");
+                              setShowBlockDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <FiVideo className="text-pink-400 text-lg" />
+                            <div>
+                              <p className="font-medium">Video Google Drive</p>
+                              <p className="text-xs text-gray-400">Embed video dari Google Drive</p>
+                            </div>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -639,6 +1147,62 @@ export default function DashboardPage() {
         cancelText="Batal"
         type="success"
       />
+
+      {/* Template Confirmation Modal */}
+      <AnimatePresence>
+        {showTemplateConfirm && selectedTemplate && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={handleCancelTemplate}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-gradient-to-br from-gray-900 to-black border border-purple-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-2xl">{selectedTemplate.icon}</div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Terapkan Template?</h3>
+                  <p className="text-gray-400 text-sm">Konten yang ada akan diganti</p>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="mb-6">
+                <p className="text-gray-300 mb-3">Anda akan menerapkan template:</p>
+                <div className="bg-white/5 p-4 rounded-lg border border-purple-500/30">
+                  <h4 className="text-white font-medium mb-1">{selectedTemplate.name}</h4>
+                  <p className="text-gray-400 text-sm mb-2">{selectedTemplate.description}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded-md">{selectedTemplate.blocks.length > 0 ? `${selectedTemplate.blocks.length} content blocks` : "Blank canvas"}</span>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <p className="text-orange-300 text-sm flex items-start gap-2">
+                    <span className="flex-shrink-0">⚠️</span>
+                    <span>Konten yang sudah Anda buat ({contentBlocks.length} blocks) akan dihapus dan diganti dengan template ini.</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button onClick={handleCancelTemplate} className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all">
+                  Batal
+                </button>
+                <button
+                  onClick={handleConfirmTemplate}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  <FiLayout className="text-sm" />
+                  Ya, Terapkan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

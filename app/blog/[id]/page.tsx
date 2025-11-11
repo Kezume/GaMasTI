@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   FiArrowLeft,
@@ -1192,16 +1192,18 @@ export default function BlogDetail() {
       </div>
 
       {/* Image Modal */}
-      {selectedImage && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
-          <div className="relative max-w-4xl max-h-full">
-            <img src={selectedImage} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" />
-            <button onClick={() => setSelectedImage(null)} className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors">
-              <FiX className="text-xl" />
-            </button>
-          </div>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
+              <img src={selectedImage} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" />
+              <button onClick={() => setSelectedImage(null)} className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors">
+                <FiX className="text-xl" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

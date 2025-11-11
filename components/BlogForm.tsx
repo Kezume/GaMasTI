@@ -102,6 +102,28 @@ export default function BlogForm() {
     e.preventDefault();
     if (!user) return toast.error("Harus login dulu");
 
+    // Check if user is blocked
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+
+      if (userData?.blockedUntil) {
+        const blockedUntil = userData.blockedUntil.toDate ? userData.blockedUntil.toDate() : new Date(userData.blockedUntil);
+        if (blockedUntil > new Date()) {
+          const blockedUntilDate = blockedUntil.toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          return toast.error(`Akun Anda diblokir hingga ${blockedUntilDate}. Anda tidak dapat membuat blog.`, {
+            autoClose: 5000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error checking block status:", error);
+    }
+
     if (!title.trim()) {
       return toast.error("Judul blog tidak boleh kosong");
     }
@@ -367,7 +389,7 @@ export default function BlogForm() {
           <FiYoutube />
           Tambah Video
         </button>
-        <button type="button" onClick={() => addBlock("image")} className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 px-4 py-2 rounded-lg transition-colors">
+        <button type="button" onClick={() => addBlock("image")} className="flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 px-4 py-2 rounded-lg transition-colors">
           <FiImage />
           Tambah Gambar
         </button>
@@ -381,7 +403,7 @@ export default function BlogForm() {
       <button
         type="submit"
         disabled={uploading}
-        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {uploading ? "Mengunggah..." : "Tambahkan Blog"}
       </button>

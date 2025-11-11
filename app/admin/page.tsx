@@ -5,7 +5,7 @@ import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
-import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch, FiArrowLeft, FiHome } from "react-icons/fi";
+import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch, FiArrowLeft, FiHome, FiShield } from "react-icons/fi";
 import { toast } from "react-toastify";
 import ConfirmModal from "@/components/ConfirmModal";
 import Link from "next/link";
@@ -17,6 +17,7 @@ interface User {
   photoURL: string;
   role: string;
   createdAt: any;
+  blockedUntil?: any; // Timestamp when block expires
 }
 
 interface Blog {
@@ -47,6 +48,11 @@ export default function AdminDashboard() {
   const [searchEmail, setSearchEmail] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // State untuk block user
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [selectedUserToBlock, setSelectedUserToBlock] = useState<User | null>(null);
+  const [blockDuration, setBlockDuration] = useState<number>(7); // Default 7 hari
 
   // Confirm modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -265,6 +271,75 @@ export default function AdminDashboard() {
     setShowConfirmModal(true);
   };
 
+  // Block user functions
+  const blockUser = async (userId: string, days: number) => {
+    const user = users.find((u) => u.uid === userId);
+    const blockedUntil = new Date();
+    blockedUntil.setDate(blockedUntil.getDate() + days);
+
+    setConfirmAction({
+      action: async () => {
+        try {
+          await updateDoc(doc(db, "users", userId), {
+            blockedUntil: blockedUntil,
+            updatedAt: new Date(),
+          });
+          setUsers(users.map((u) => (u.uid === userId ? { ...u, blockedUntil } : u)));
+          setShowBlockModal(false);
+          setSelectedUserToBlock(null);
+          toast.success(`User ${user?.displayName || user?.email} diblokir selama ${days} hari`);
+        } catch (error) {
+          console.error("Error blocking user:", error);
+          toast.error("Gagal memblokir user");
+        }
+      },
+      title: "Blokir User",
+      message: `Blokir ${user?.displayName || user?.email} selama ${days} hari? User tidak akan bisa upload blog hingga ${blockedUntil.toLocaleDateString("id-ID")}.`,
+      type: "warning",
+    });
+    setShowConfirmModal(true);
+  };
+
+  const unblockUser = async (userId: string) => {
+    const user = users.find((u) => u.uid === userId);
+
+    setConfirmAction({
+      action: async () => {
+        try {
+          await updateDoc(doc(db, "users", userId), {
+            blockedUntil: null,
+            updatedAt: new Date(),
+          });
+          setUsers(users.map((u) => (u.uid === userId ? { ...u, blockedUntil: null } : u)));
+          toast.success(`User ${user?.displayName || user?.email} berhasil di-unblock`);
+        } catch (error) {
+          console.error("Error unblocking user:", error);
+          toast.error("Gagal meng-unblock user");
+        }
+      },
+      title: "Unblock User",
+      message: `Unblock ${user?.displayName || user?.email}? User akan bisa upload blog kembali.`,
+      type: "info",
+    });
+    setShowConfirmModal(true);
+  };
+
+  const isUserBlocked = (user: User): boolean => {
+    if (!user.blockedUntil) return false;
+    const blockedUntil = user.blockedUntil.toDate ? user.blockedUntil.toDate() : new Date(user.blockedUntil);
+    return blockedUntil > new Date();
+  };
+
+  const getBlockedUntilDate = (user: User): string => {
+    if (!user.blockedUntil) return "";
+    const blockedUntil = user.blockedUntil.toDate ? user.blockedUntil.toDate() : new Date(user.blockedUntil);
+    return blockedUntil.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   // Helper function untuk menangani konten blog yang undefined
   const getBlogContentPreview = (content: string | undefined) => {
     if (!content) return "Tidak ada konten";
@@ -357,7 +432,7 @@ export default function AdminDashboard() {
         <div className="w-full px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
                 <FiSettings className="text-white text-lg" />
               </div>
               <div>
@@ -394,7 +469,7 @@ export default function AdminDashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-medium transition-all flex-shrink-0 ${
-                activeTab === tab.id ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"
+                activeTab === tab.id ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
             >
               <tab.icon className="text-lg" />
@@ -507,7 +582,7 @@ export default function AdminDashboard() {
                             <p className="text-xs text-gray-400">{user.email}</p>
                           </div>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"}`}>{user.role}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>{user.role}</span>
                       </div>
                     ))}
                   </div>
@@ -525,7 +600,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setShowAddAdmin(true)}
-                    className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-4 py-2 rounded-xl font-medium transition-all shadow-lg hover:shadow-green-500/25 w-full sm:w-auto justify-center"
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-2 rounded-xl font-medium transition-all shadow-lg hover:shadow-blue-500/25 w-full sm:w-auto justify-center"
                   >
                     <FiPlus className="text-lg" />
                     <span>Tambah Admin</span>
@@ -559,10 +634,10 @@ export default function AdminDashboard() {
                           value={adminEmail}
                           onChange={(e) => setAdminEmail(e.target.value)}
                           placeholder="contoh: user@example.com"
-                          className="flex-1 bg-black/30 border border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all w-full"
+                          className="flex-1 bg-black/30 border border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all w-full"
                         />
                         <div className="flex gap-2">
-                          <button onClick={addAdminByEmail} className="bg-green-500 hover:bg-green-600 px-4 sm:px-6 py-3 rounded-xl font-medium transition-colors flex-1">
+                          <button onClick={addAdminByEmail} className="bg-blue-500 hover:bg-blue-600 px-4 sm:px-6 py-3 rounded-xl font-medium transition-colors flex-1">
                             Tambah
                           </button>
                           <button onClick={() => setShowAddAdmin(false)} className="bg-gray-500 hover:bg-gray-600 px-4 py-3 rounded-xl font-medium transition-colors">
@@ -604,14 +679,14 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded-full text-xs ${result.role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"}`}>{result.role}</span>
+                                <span className={`px-2 py-1 rounded-full text-xs ${result.role === "admin" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>{result.role}</span>
                                 {result.role !== "admin" && (
                                   <button
                                     onClick={() => {
                                       setAdminEmail(result.email);
                                       setSearchResults([]);
                                     }}
-                                    className="text-green-400 hover:text-green-300 text-sm"
+                                    className="text-blue-400 hover:text-blue-300 text-sm"
                                   >
                                     Pilih
                                   </button>
@@ -646,21 +721,27 @@ export default function AdminDashboard() {
                               <div>
                                 <p className="font-medium text-white text-sm sm:text-base">{user.displayName || "No Name"}</p>
                                 <p className="text-xs text-gray-400">ID: {user.uid.substring(0, 8)}...</p>
+                                {isUserBlocked(user) && (
+                                  <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
+                                    <FiShield className="text-xs" />
+                                    Diblokir hingga {getBlockedUntilDate(user)}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
                           <td className="p-4 text-gray-300 text-sm sm:text-base">{user.email}</td>
                           <td className="p-4">
-                            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30"}`}>
+                            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-gray-500/20 text-gray-400 border border-gray-500/30"}`}>
                               {user.role}
                             </span>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-1 sm:gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                               {user.role === "user" ? (
                                 <button
                                   onClick={() => updateUserRole(user.uid, "admin")}
-                                  className="flex items-center gap-1 sm:gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-2 sm:px-3 py-1 sm:py-2 rounded-xl transition-all text-xs sm:text-sm"
+                                  className="flex items-center gap-1 sm:gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 hover:text-blue-300 px-2 sm:px-3 py-1 sm:py-2 rounded-xl transition-all text-xs sm:text-sm"
                                 >
                                   <FiUserCheck className="text-xs sm:text-sm" />
                                   <span className="hidden sm:inline">Make Admin</span>
@@ -678,6 +759,35 @@ export default function AdminDashboard() {
                                   </button>
                                 )
                               )}
+
+                              {/* Block/Unblock Button */}
+                              {user.uid !== auth.currentUser?.uid && (
+                                <>
+                                  {isUserBlocked(user) ? (
+                                    <button
+                                      onClick={() => unblockUser(user.uid)}
+                                      className="flex items-center gap-1 sm:gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 hover:text-blue-300 px-2 sm:px-3 py-1 sm:py-2 rounded-xl transition-all text-xs sm:text-sm"
+                                    >
+                                      <FiShield className="text-xs sm:text-sm" />
+                                      <span className="hidden sm:inline">Unblock</span>
+                                      <span className="sm:hidden">✓</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedUserToBlock(user);
+                                        setShowBlockModal(true);
+                                      }}
+                                      className="flex items-center gap-1 sm:gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300 px-2 sm:px-3 py-1 sm:py-2 rounded-xl transition-all text-xs sm:text-sm"
+                                    >
+                                      <FiShield className="text-xs sm:text-sm" />
+                                      <span className="hidden sm:inline">Block</span>
+                                      <span className="sm:hidden">🚫</span>
+                                    </button>
+                                  )}
+                                </>
+                              )}
+
                               {user.uid === auth.currentUser?.uid && <span className="text-xs text-gray-500">Current</span>}
                             </div>
                           </td>
@@ -754,7 +864,7 @@ export default function AdminDashboard() {
                               {blog.status !== "published" ? (
                                 <button
                                   onClick={() => updateBlogStatus(blog.id, "published")}
-                                  className="flex items-center gap-1 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 hover:text-green-300 p-1 sm:p-2 rounded-xl transition-all"
+                                  className="flex items-center gap-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 hover:text-blue-300 p-1 sm:p-2 rounded-xl transition-all"
                                   title="Publish"
                                 >
                                   <FiCheck className="text-xs sm:text-sm" />
@@ -804,6 +914,83 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Block User Modal */}
+      {showBlockModal && selectedUserToBlock && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                <FiShield className="text-2xl text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Blokir User</h3>
+                <p className="text-sm text-gray-400">{selectedUserToBlock.displayName || selectedUserToBlock.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">Pilih Durasi Blokir:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { days: 1, label: "1 Hari" },
+                    { days: 3, label: "3 Hari" },
+                    { days: 7, label: "7 Hari" },
+                    { days: 14, label: "14 Hari" },
+                    { days: 30, label: "30 Hari" },
+                    { days: 90, label: "90 Hari" },
+                  ].map((option) => (
+                    <button
+                      key={option.days}
+                      onClick={() => setBlockDuration(option.days)}
+                      className={`px-4 py-3 rounded-xl font-medium transition-all ${blockDuration === option.days ? "bg-red-500 text-white shadow-lg" : "bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                <p className="text-sm text-yellow-400 flex items-center gap-2">
+                  <FiSettings className="flex-shrink-0" />
+                  <span>
+                    User tidak akan dapat membuat atau mempublikasikan blog selama <strong>{blockDuration} hari</strong>
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowBlockModal(false);
+                    setSelectedUserToBlock(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded-xl font-medium transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    blockUser(selectedUserToBlock.uid, blockDuration);
+                  }}
+                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  <FiShield />
+                  Blokir User
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Confirm Modal */}
       {confirmAction && (

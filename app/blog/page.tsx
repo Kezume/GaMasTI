@@ -62,6 +62,12 @@ export default function BlogPage() {
     }
   };
 
+  // Handle delete blog - update state tanpa reload
+  const handleDeleteBlog = (blogId: string) => {
+    setBlogs((prevBlogs) => prevBlogs.filter((blog) => blog.id !== blogId));
+    setFilteredBlogs((prevBlogs) => prevBlogs.filter((blog) => blog.id !== blogId));
+  };
+
   // Helper function to get GitHub URL
   const getGitHubUrl = (githubUrl?: string): string => {
     if (!githubUrl) return "";
@@ -275,7 +281,7 @@ export default function BlogPage() {
       {/* Blog Content Area - FULL WIDTH */}
       <div className="w-full px-4 sm:px-6">
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6 w-full">
             {[...Array(6)].map((_, i) => (
               <motion.div
                 key={i}
@@ -284,16 +290,16 @@ export default function BlogPage() {
                 transition={{ delay: i * 0.1 }}
                 className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 animate-pulse w-full"
               >
-                <div className="h-32 sm:h-40 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg sm:rounded-xl mb-3 sm:mb-4 w-full"></div>
+                <div className="h-32 sm:h-40 md:h-44 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg sm:rounded-xl mb-3 sm:mb-4 w-full"></div>
                 <div className="h-4 sm:h-5 bg-gray-700 rounded mb-2 sm:mb-3 w-full"></div>
                 <div className="h-3 bg-gray-700 rounded mb-2 w-3/4"></div>
                 <div className="h-3 bg-gray-700 rounded mb-3 sm:mb-4 w-1/2"></div>
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-700 rounded-full"></div>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-700 rounded-full"></div>
                     <div className="space-y-1">
-                      <div className="h-3 bg-gray-700 rounded w-14 sm:w-16"></div>
-                      <div className="h-2 bg-gray-700 rounded w-10 sm:w-12"></div>
+                      <div className="h-3 bg-gray-700 rounded w-16 sm:w-20"></div>
+                      <div className="h-2 bg-gray-700 rounded w-12 sm:w-14"></div>
                     </div>
                   </div>
                   <div className="h-3 bg-gray-700 rounded w-12 sm:w-14"></div>
@@ -340,7 +346,7 @@ export default function BlogPage() {
             </div>
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6 w-full">
             {filteredBlogs.map((blog, i) => (
               <motion.article
                 key={blog.id}
@@ -412,27 +418,27 @@ export default function BlogPage() {
 
                   <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 leading-relaxed">{blog.content}</p>
 
-                  {/* Author Info - Responsif */}
-                  <div className="flex items-center justify-between mb-3 w-full">
-                    <div className="flex items-center gap-2">
-                      <img src={blog.authorAvatar} alt={blog.authorName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-200" />
-                      <div>
-                        <p className="font-semibold text-white text-xs">{blog.authorName}</p>
+                  {/* Author Info - Responsif dengan breakpoint lebih baik */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 w-full">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <img src={blog.authorAvatar} alt={blog.authorName} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-200 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-white text-xs sm:text-sm truncate">{blog.authorName}</p>
                         {blog.githubUrl ? (
                           <a href={getGitHubUrl(blog.githubUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs">
-                            <FiGithub className="text-xs" />
-                            <span className="text-xs">@{getGitHubUsername(blog.githubUrl)}</span>
+                            <FiGithub className="text-xs flex-shrink-0" />
+                            <span className="text-xs truncate">@{getGitHubUsername(blog.githubUrl)}</span>
                           </a>
                         ) : (
                           <div className="flex items-center gap-1 text-gray-500 text-xs">
-                            <FiUser className="text-xs" />
+                            <FiUser className="text-xs flex-shrink-0" />
                             <span className="text-xs">Anonim</span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1 items-end">
+                    <div className="flex items-center gap-3 sm:flex-col sm:gap-1 sm:items-end">
                       {blog.views !== undefined && (
                         <div className="flex items-center gap-1 text-cyan-400 text-xs">
                           <FiEye className="text-xs" />
@@ -442,27 +448,27 @@ export default function BlogPage() {
                       {blog.createdAt && (
                         <div className="flex items-center gap-1 text-gray-400 text-xs">
                           <FiCalendar className="text-xs" />
-                          <span className="text-xs">{formatDate(blog.createdAt.seconds)}</span>
+                          <span className="text-xs whitespace-nowrap">{formatDate(blog.createdAt.seconds)}</span>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Action Buttons - Responsif */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10 w-full">
-                    <Link href={`/blog/${blog.id}`} className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-all group/read">
+                  {/* Action Buttons - Responsif & Mobile Friendly */}
+                  <div className="flex items-center justify-between pt-3 border-t border-white/10 w-full gap-2">
+                    <Link href={`/blog/${blog.id}`} className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs sm:text-sm transition-all group/read">
                       <span>Baca Lengkap</span>
-                      <FiEye className="group-hover/read:translate-x-0.5 transition-transform duration-200 text-xs" />
+                      <FiEye className="group-hover/read:translate-x-0.5 transition-transform duration-200 text-xs sm:text-sm" />
                     </Link>
 
-                    {/* Action Buttons untuk pemilik */}
+                    {/* Action Buttons untuk pemilik - Compact di mobile */}
                     {blog.authorId && user && user.uid === blog.authorId && (
-                      <div className="flex items-center gap-2">
-                        <Link href={`/blog/edit/${blog.id}`} className="text-green-400 hover:text-green-300 text-xs transition-colors">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <Link href={`/blog/edit/${blog.id}`} className="text-green-400 hover:text-green-300 transition-colors whitespace-nowrap">
                           Edit
                         </Link>
-                        <span className="text-gray-600 text-xs">•</span>
-                        <DeleteBlogButton blogId={blog.id} authorId={blog.authorId} blogTitle={blog.title} />
+                        <span className="text-gray-600">•</span>
+                        <DeleteBlogButton blogId={blog.id} authorId={blog.authorId} blogTitle={blog.title} onDelete={() => handleDeleteBlog(blog.id)} />
                       </div>
                     )}
                   </div>

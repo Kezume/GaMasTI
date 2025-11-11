@@ -44,41 +44,42 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
           {/* Modal */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-gray-800 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6">
-              {/* Close Button */}
-              <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-                <FiX className="text-xl" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gray-800 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            {/* Close Button */}
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+              <FiX className="text-xl" />
+            </button>
+
+            {/* Icon */}
+            <div className={`w-16 h-16 ${iconBg[type]} rounded-full flex items-center justify-center mx-auto mb-4`}>
+              <div className="text-3xl">{icons[type]}</div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-white text-center mb-3">{title}</h3>
+
+            {/* Message */}
+            <p className="text-gray-300 text-center mb-6 leading-relaxed">{message}</p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium transition-colors">
+                {cancelText}
               </button>
-
-              {/* Icon */}
-              <div className={`w-16 h-16 ${iconBg[type]} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                <div className="text-3xl">{icons[type]}</div>
-              </div>
-
-              {/* Title */}
-              <h3 className="text-2xl font-bold text-white text-center mb-3">{title}</h3>
-
-              {/* Message */}
-              <p className="text-gray-300 text-center mb-6 leading-relaxed">{message}</p>
-
-              {/* Buttons */}
-              <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium transition-colors">
-                  {cancelText}
-                </button>
-                <button onClick={handleConfirm} className={`flex-1 ${buttonColors[type]} text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg`}>
-                  {confirmText}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        </>
+              <button onClick={handleConfirm} className={`flex-1 ${buttonColors[type]} text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg`}>
+                {confirmText}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
