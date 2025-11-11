@@ -7,33 +7,17 @@ import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { 
-  FiArrowLeft, 
-  FiCalendar, 
-  FiGithub, 
-  FiShare2, 
-  FiClock, 
-  FiEdit3, 
-  FiSave, 
-  FiX, 
-  FiSettings,
-  FiYoutube,
-  FiPlay,
-  FiImage,
-  FiPlus,
-  FiCheck,
-  FiEdit2,
-  FiTrash2
-} from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiGithub, FiShare2, FiClock, FiEdit3, FiSave, FiX, FiSettings, FiYoutube, FiPlay, FiImage, FiPlus, FiCheck, FiEdit2, FiTrash2, FiType, FiFileText, FiArrowUp, FiArrowDown, FiCode } from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 import YouTubeEmbed from "@/components/YoutubeEmbed";
 import { toast } from "react-toastify";
 
 interface Blog {
   title: string;
-  content: string;
+  content?: string; // Optional for backwards compatibility
   images?: string[];
-  youtubeUrls?: string[]; // TAMBAHKAN INI
+  youtubeUrls?: string[];
+  contentBlocks?: ContentBlock[];
   authorName?: string;
   authorAvatar?: string;
   authorId?: string;
@@ -41,6 +25,22 @@ interface Blog {
   githubUrl?: string;
   status?: string;
   createdAt?: { seconds: number };
+}
+
+// Interface untuk Content Blocks
+type ContentBlockType = "subtitle" | "text" | "image" | "youtube" | "code";
+
+interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  content: string;
+  language?: string;
+}
+
+interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  content: string;
 }
 
 export default function BlogDetail() {
@@ -53,6 +53,7 @@ export default function BlogDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [editContentBlocks, setEditContentBlocks] = useState<ContentBlock[]>([]);
   const [updating, setUpdating] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -72,8 +73,8 @@ export default function BlogDetail() {
       if (user) {
         try {
           const userDoc = await getDocs(collection(db, "users"));
-          const userData = userDoc.docs.find(doc => doc.id === user.uid);
-          if (userData?.data()?.role === 'admin') {
+          const userData = userDoc.docs.find((doc) => doc.id === user.uid);
+          if (userData?.data()?.role === "admin") {
             setIsAdmin(true);
           }
         } catch (error) {
@@ -81,7 +82,7 @@ export default function BlogDetail() {
         }
       }
     };
-    
+
     checkAdmin();
   }, [user]);
 
@@ -94,7 +95,8 @@ export default function BlogDetail() {
           const blogData = docSnap.data() as Blog;
           setBlog(blogData);
           setEditTitle(blogData.title);
-          setEditContent(blogData.content);
+          setEditContent(blogData.content || "");
+          setEditContentBlocks(blogData.contentBlocks || []);
           setEditYoutubeUrls(blogData.youtubeUrls || []);
           setEditImages(blogData.images || []);
         } else {
@@ -107,7 +109,7 @@ export default function BlogDetail() {
         setLoading(false);
       }
     };
-    
+
     if (!userLoading) {
       fetchBlog();
     }
@@ -239,17 +241,76 @@ export default function BlogDetail() {
       formData.append("file", file);
       formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
       const data = await res.json();
       uploadedUrls.push(data.secure_url);
     }
     return uploadedUrls;
+  };
+
+  // Fungsi untuk Content Blocks
+  const generateId = () => Math.random().toString(36).substring(2, 11);
+
+  const addContentBlock = (type: ContentBlockType) => {
+    const newBlock: ContentBlock = {
+      id: generateId(),
+      type,
+      content: "",
+    };
+    setEditContentBlocks([...editContentBlocks, newBlock]);
+  };
+
+  const updateContentBlock = (id: string, content: string) => {
+    setEditContentBlocks(editContentBlocks.map((block) => (block.id === id ? { ...block, content } : block)));
+  };
+
+  const removeContentBlock = (id: string) => {
+    setEditContentBlocks(editContentBlocks.filter((block) => block.id !== id));
+    toast.success("Block dihapus");
+  };
+
+  const moveContentBlockUp = (index: number) => {
+    if (index === 0) return; // Already at top
+    const newBlocks = [...editContentBlocks];
+    [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+    setEditContentBlocks(newBlocks);
+  };
+
+  const moveContentBlockDown = (index: number) => {
+    if (index === editContentBlocks.length - 1) return; // Already at bottom
+    const newBlocks = [...editContentBlocks];
+    [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+    setEditContentBlocks(newBlocks);
+  };
+
+  const uploadBlockImage = async (id: string, file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 5MB");
+      return;
+    }
+
+    const loadingToast = toast.loading("Mengunggah gambar...");
+    try {
+      const imageUrl = await uploadImagesToCloudinary([file]);
+      updateContentBlock(id, imageUrl[0]);
+      toast.update(loadingToast, {
+        render: "Gambar berhasil diunggah!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.update(loadingToast, {
+        render: "Gagal mengunggah gambar",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
   };
 
   const handleUpdate = async () => {
@@ -258,9 +319,23 @@ export default function BlogDetail() {
       return;
     }
 
-    if (!editTitle.trim() || !editContent.trim()) {
-      toast.error("Judul dan konten tidak boleh kosong!");
+    if (!editTitle.trim()) {
+      toast.error("Judul tidak boleh kosong!");
       return;
+    }
+
+    // Validasi content blocks jika ada
+    if (editContentBlocks.length > 0) {
+      for (const block of editContentBlocks) {
+        if (!block.content.trim()) {
+          toast.error(`Block ${block.type} tidak boleh kosong`);
+          return;
+        }
+        if (block.type === "youtube" && !isValidYouTubeUrl(block.content)) {
+          toast.error("URL YouTube tidak valid");
+          return;
+        }
+      }
     }
 
     setUpdating(true);
@@ -281,20 +356,39 @@ export default function BlogDetail() {
       const finalImages = [...editImages, ...newUploadedUrls];
 
       const blogRef = doc(db, "blogs", id as string);
-      await updateDoc(blogRef, {
+
+      // Update dengan content blocks jika ada, atau gunakan format lama
+      const updateData: any = {
         title: editTitle.trim(),
-        content: editContent.trim(),
-        youtubeUrls: editYoutubeUrls,
-        images: finalImages,
         updatedAt: new Date(),
-      });
+      };
+
+      if (editContentBlocks.length > 0) {
+        updateData.contentBlocks = editContentBlocks;
+        // Hapus field lama jika migrasi ke format baru
+        updateData.content = null;
+      } else if (editContent) {
+        // Backward compatibility: jika tidak ada blocks tapi ada content lama
+        updateData.content = editContent.trim();
+      }
+
+      // Tambahkan data legacy jika ada
+      if (editYoutubeUrls.length > 0) {
+        updateData.youtubeUrls = editYoutubeUrls;
+      }
+      if (finalImages.length > 0) {
+        updateData.images = finalImages;
+      }
+
+      await updateDoc(blogRef, updateData);
 
       setBlog((prev) =>
         prev
           ? {
               ...prev,
               title: editTitle,
-              content: editContent,
+              content: updateData.content,
+              contentBlocks: updateData.contentBlocks,
               youtubeUrls: editYoutubeUrls,
               images: finalImages,
             }
@@ -328,6 +422,7 @@ export default function BlogDetail() {
   const cancelEdit = () => {
     setEditTitle(blog?.title || "");
     setEditContent(blog?.content || "");
+    setEditContentBlocks(blog?.contentBlocks || []);
     setEditYoutubeUrls(blog?.youtubeUrls || []);
     setEditImages(blog?.images || []);
     setNewImageFiles([]);
@@ -339,22 +434,23 @@ export default function BlogDetail() {
   };
 
   const formatDate = (seconds: number) => {
-    return new Date(seconds * 1000).toLocaleDateString('id-ID', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(seconds * 1000).toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const formatTime = (seconds: number) => {
-    return new Date(seconds * 1000).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(seconds * 1000).toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const estimateReadTime = (content: string) => {
+  const estimateReadTime = (content: string | undefined) => {
+    if (!content) return "1 menit membaca";
     const wordsPerMinute = 200;
     const words = content.split(/\s+/).length;
     const minutes = Math.ceil(words / wordsPerMinute);
@@ -362,19 +458,21 @@ export default function BlogDetail() {
   };
 
   const shareBlog = async () => {
+    const description = blog?.content ? blog.content.substring(0, 100) + "..." : "Blog menarik dari GaMasTI";
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: blog?.title,
-          text: blog?.content.substring(0, 100) + '...',
+          text: description,
           url: window.location.href,
         });
       } catch (err) {
-        console.log('Error sharing:', err);
+        console.log("Error sharing:", err);
       }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert('Link berhasil disalin ke clipboard!');
+      alert("Link berhasil disalin ke clipboard!");
     }
   };
 
@@ -413,14 +511,11 @@ export default function BlogDetail() {
       <nav className="fixed top-0 left-0 w-full z-40 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
-            >
+            <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group">
               <FiArrowLeft className="text-lg group-hover:-translate-x-1 transition-transform" />
               <span>Kembali</span>
             </button>
-            
+
             <div className="flex items-center gap-3">
               {/* Edit/Save Button - hanya untuk pemilik atau admin */}
               {isOwner && (
@@ -440,12 +535,8 @@ export default function BlogDetail() {
                         disabled={updating}
                         className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 hover:text-green-300 px-4 py-2 rounded-xl transition-all duration-200"
                       >
-                        {updating ? (
-                          <div className="w-4 h-4 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
-                        ) : (
-                          <FiSave className="text-sm" />
-                        )}
-                        <span>{updating ? 'Menyimpan...' : 'Simpan'}</span>
+                        {updating ? <div className="w-4 h-4 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" /> : <FiSave className="text-sm" />}
+                        <span>{updating ? "Menyimpan..." : "Simpan"}</span>
                       </button>
                     </div>
                   ) : (
@@ -459,18 +550,10 @@ export default function BlogDetail() {
                   )}
                 </>
               )}
-              
+
               {/* Delete Button - hanya untuk pemilik atau admin */}
-              {isOwner && blog.authorId && (
-                <DeleteBlogButton 
-                  blogId={id as string}
-                  authorId={blog.authorId}
-                  authorEmail={blog.authorEmail}
-                  blogTitle={blog.title}
-                  onDelete={handleBlogDelete}
-                />
-              )}
-              
+              {isOwner && blog.authorId && <DeleteBlogButton blogId={id as string} authorId={blog.authorId} authorEmail={blog.authorEmail} blogTitle={blog.title} onDelete={handleBlogDelete} />}
+
               {/* Admin Badge */}
               {isAdmin && (
                 <div className="flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-400 px-3 py-2 rounded-xl">
@@ -478,11 +561,8 @@ export default function BlogDetail() {
                   <span className="text-sm">Admin</span>
                 </div>
               )}
-              
-              <button
-                onClick={shareBlog}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl transition-all"
-              >
+
+              <button onClick={shareBlog} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl transition-all">
                 <FiShare2 className="text-sm" />
                 <span>Bagikan</span>
               </button>
@@ -492,12 +572,7 @@ export default function BlogDetail() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
-        <motion.article
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
-        >
+        <motion.article initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
           {/* Header */}
           <div className="p-8 border-b border-white/10">
             {isEditing ? (
@@ -509,45 +584,24 @@ export default function BlogDetail() {
                   className="w-full bg-black/30 border border-blue-500/50 rounded-xl px-4 py-3 text-2xl font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="Judul blog..."
                 />
-                <div className="text-right text-sm text-gray-500">
-                  {editTitle.length}/100 karakter
-                </div>
+                <div className="text-right text-sm text-gray-500">{editTitle.length}/100 karakter</div>
               </div>
             ) : (
-              <motion.h1 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-3xl sm:text-4xl font-bold mb-6 leading-tight"
-              >
+              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-3xl sm:text-4xl font-bold mb-6 leading-tight">
                 {blog.title}
               </motion.h1>
             )}
 
             {/* Author & Meta Info */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <img
-                  src={blog.authorAvatar || "/default-avatar.png"}
-                  alt={blog.authorName}
-                  className="w-12 h-12 rounded-full border-2 border-white/20"
-                />
+                <img src={blog.authorAvatar || "/default-avatar.png"} alt={blog.authorName} className="w-12 h-12 rounded-full border-2 border-white/20" />
                 <div>
                   <p className="font-semibold text-lg">{blog.authorName || "Anonim"}</p>
                   {blog.githubUrl && (
-                    <a
-                      href={blog.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm"
-                    >
+                    <a href={blog.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm">
                       <FiGithub className="text-sm" />
-                      {blog.githubUrl.split('/').pop()}
+                      {blog.githubUrl.split("/").pop()}
                     </a>
                   )}
                 </div>
@@ -577,13 +631,15 @@ export default function BlogDetail() {
             <div className="flex flex-wrap gap-2 mt-4">
               {/* Status Badge */}
               {blog.status && (
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  blog.status === 'published' 
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : blog.status === 'draft'
-                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                    : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    blog.status === "published"
+                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                      : blog.status === "draft"
+                      ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                      : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                  }`}
+                >
                   Status: {blog.status}
                 </span>
               )}
@@ -610,11 +666,7 @@ export default function BlogDetail() {
           <div className="p-8">
             {/* YouTube Videos Section */}
             {isEditing ? (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-12 bg-white/5 border border-white/10 rounded-2xl p-6"
-              >
+              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12 bg-white/5 border border-white/10 rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <FiYoutube className="text-red-500" />
                   Edit Video YouTube
@@ -624,9 +676,7 @@ export default function BlogDetail() {
                 {/* Add YouTube URL */}
                 {editYoutubeUrls.length < 3 && (
                   <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Tambah URL YouTube
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Tambah URL YouTube</label>
                     <div className="flex gap-2">
                       <input
                         type="url"
@@ -635,11 +685,7 @@ export default function BlogDetail() {
                         placeholder="https://www.youtube.com/watch?v=..."
                         className="flex-1 bg-black/30 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
                       />
-                      <button
-                        type="button"
-                        onClick={addYouTubeUrl}
-                        className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
+                      <button type="button" onClick={addYouTubeUrl} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-medium transition-colors">
                         <FiPlus className="text-sm" />
                         Tambah
                       </button>
@@ -667,49 +713,27 @@ export default function BlogDetail() {
                                 className="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                               />
                               <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={saveEditYouTubeUrl}
-                                  className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium"
-                                >
+                                <button type="button" onClick={saveEditYouTubeUrl} className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium">
                                   <FiCheck className="text-sm" />
                                   Simpan
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={cancelEditYouTubeUrl}
-                                  className="bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium"
-                                >
+                                <button type="button" onClick={cancelEditYouTubeUrl} className="bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium">
                                   Batal
                                 </button>
                               </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-3">
-                              <div className="shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden">
-                                {videoId && (
-                                  <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                                )}
-                              </div>
+                              <div className="shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden">{videoId && <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-white truncate">Video {index + 1}</p>
                                 <p className="text-xs text-gray-400 truncate">{url}</p>
                               </div>
                               <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => startEditYouTubeUrl(index)}
-                                  className="text-blue-400 hover:text-blue-300 p-1"
-                                  title="Edit video"
-                                >
+                                <button type="button" onClick={() => startEditYouTubeUrl(index)} className="text-blue-400 hover:text-blue-300 p-1" title="Edit video">
                                   <FiEdit2 className="text-lg" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeYouTubeUrl(index)}
-                                  className="text-red-400 hover:text-red-300 p-1"
-                                  title="Hapus video"
-                                >
+                                <button type="button" onClick={() => removeYouTubeUrl(index)} className="text-red-400 hover:text-red-300 p-1" title="Hapus video">
                                   <FiTrash2 className="text-lg" />
                                 </button>
                               </div>
@@ -721,57 +745,282 @@ export default function BlogDetail() {
                   </div>
                 )}
 
-                {editYoutubeUrls.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">Belum ada video YouTube</p>
-                )}
+                {editYoutubeUrls.length === 0 && <p className="text-center text-gray-500 py-4">Belum ada video YouTube</p>}
               </motion.section>
             ) : (
-              blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                <motion.section
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="mb-12"
-                >
+              blog.youtubeUrls &&
+              blog.youtubeUrls.length > 0 && (
+                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-12">
                   <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                     <FiYoutube className="text-red-500" />
                     Video YouTube
                   </h2>
                   <div className="space-y-6">
                     {blog.youtubeUrls.map((url, index) => (
-                      <YouTubeEmbed
-                        key={index}
-                        url={url}
-                        title={`${blog.title} - Video ${index + 1}`}
-                      />
+                      <YouTubeEmbed key={index} url={url} title={`${blog.title} - Video ${index + 1}`} />
                     ))}
                   </div>
                 </motion.section>
               )
             )}
 
+            {/* Content Blocks Section */}
             {isEditing ? (
-              <div className="space-y-4">
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  rows={15}
-                  className="w-full bg-black/30 border border-blue-500/50 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                  placeholder="Tulis konten blog Anda di sini..."
-                />
-                <div className="text-right text-sm text-gray-500">
-                  {editContent.length}/5000 karakter
+              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <h2 className="text-2xl font-bold flex items-center gap-3">
+                  <FiFileText className="text-green-500" />
+                  Konten Blog
+                </h2>
+
+                {/* Content Blocks List */}
+                {editContentBlocks.map((block, index) => (
+                  <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        {block.type === "subtitle" && (
+                          <>
+                            <FiType /> Sub Judul
+                          </>
+                        )}
+                        {block.type === "text" && (
+                          <>
+                            <FiFileText /> Konten Teks
+                          </>
+                        )}
+                        {block.type === "youtube" && (
+                          <>
+                            <FiYoutube /> Video YouTube
+                          </>
+                        )}
+                        {block.type === "image" && (
+                          <>
+                            <FiImage /> Gambar
+                          </>
+                        )}
+                        {block.type === "code" && (
+                          <>
+                            <FiCode /> Kode
+                          </>
+                        )}
+                        <span className="text-gray-600">#{index + 1}</span>
+                      </div>
+
+                      {/* Control Buttons */}
+                      <div className="flex items-center gap-2">
+                        {/* Move Up Button */}
+                        <button
+                          type="button"
+                          onClick={() => moveContentBlockUp(index)}
+                          disabled={index === 0}
+                          className={`p-1.5 rounded transition-colors ${index === 0 ? "text-gray-600 cursor-not-allowed" : "text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"}`}
+                          title="Pindah ke atas"
+                        >
+                          <FiArrowUp />
+                        </button>
+
+                        {/* Move Down Button */}
+                        <button
+                          type="button"
+                          onClick={() => moveContentBlockDown(index)}
+                          disabled={index === editContentBlocks.length - 1}
+                          className={`p-1.5 rounded transition-colors ${index === editContentBlocks.length - 1 ? "text-gray-600 cursor-not-allowed" : "text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"}`}
+                          title="Pindah ke bawah"
+                        >
+                          <FiArrowDown />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button type="button" onClick={() => removeContentBlock(block.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/20 p-1.5 rounded transition-colors" title="Hapus block">
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </div>
+
+                    {block.type === "subtitle" && (
+                      <input
+                        type="text"
+                        value={block.content}
+                        onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                        placeholder="Masukkan sub judul..."
+                        className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-xl font-semibold text-white placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    )}
+
+                    {block.type === "text" && (
+                      <textarea
+                        value={block.content}
+                        onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                        placeholder="Tulis konten blog Anda di sini..."
+                        rows={6}
+                        className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      />
+                    )}
+
+                    {block.type === "youtube" && (
+                      <div>
+                        <input
+                          type="url"
+                          value={block.content}
+                          onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-red-500 outline-none"
+                        />
+                        {block.content && isValidYouTubeUrl(block.content) && (
+                          <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                            <FiYoutube /> URL YouTube valid ✓
+                          </div>
+                        )}
+                        {block.content && !isValidYouTubeUrl(block.content) && <div className="mt-2 text-xs text-red-400">URL YouTube tidak valid</div>}
+                      </div>
+                    )}
+
+                    {block.type === "image" && (
+                      <div>
+                        {!block.content ? (
+                          <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-lg p-6 cursor-pointer hover:border-purple-500/50 transition-colors">
+                            <FiImage className="text-3xl text-gray-400 mb-2" />
+                            <span className="text-sm text-gray-400">Klik untuk upload gambar</span>
+                            <span className="text-xs text-gray-500 mt-1">Maksimal 5MB</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadBlockImage(block.id, file);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        ) : (
+                          <div className="relative">
+                            <img src={block.content} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
+                            <button type="button" onClick={() => updateContentBlock(block.id, "")} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full" title="Ganti gambar">
+                              <FiTrash2 />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {block.type === "code" && (
+                      <div className="space-y-2">
+                        <select
+                          value={block.language || "javascript"}
+                          onChange={(e) => {
+                            const newBlocks = editContentBlocks.map((b) => (b.id === block.id ? { ...b, language: e.target.value } : b));
+                            setEditContentBlocks(newBlocks);
+                          }}
+                          className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                        >
+                          <option value="javascript">JavaScript</option>
+                          <option value="typescript">TypeScript</option>
+                          <option value="python">Python</option>
+                          <option value="java">Java</option>
+                          <option value="cpp">C++</option>
+                          <option value="csharp">C#</option>
+                          <option value="html">HTML</option>
+                          <option value="css">CSS</option>
+                          <option value="sql">SQL</option>
+                          <option value="bash">Bash</option>
+                          <option value="json">JSON</option>
+                          <option value="xml">XML</option>
+                        </select>
+                        <textarea
+                          value={block.content}
+                          onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                          placeholder="Paste kode Anda di sini..."
+                          rows={10}
+                          className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-orange-500 outline-none resize-none font-mono text-sm"
+                          spellCheck={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {editContentBlocks.length === 0 && <div className="text-center py-8 text-gray-500 border-2 border-dashed border-white/10 rounded-xl">Belum ada konten. Tambahkan block di bawah.</div>}
+
+                {/* Add Block Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => addContentBlock("subtitle")} className="flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 px-4 py-2 rounded-lg transition-colors">
+                    <FiType />
+                    Tambah Sub Judul
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("text")} className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 px-4 py-2 rounded-lg transition-colors">
+                    <FiFileText />
+                    Tambah Konten
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("youtube")} className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
+                    <FiYoutube />
+                    Tambah Video
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("image")} className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 px-4 py-2 rounded-lg transition-colors">
+                    <FiImage />
+                    Tambah Gambar
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("code")} className="flex items-center gap-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 px-4 py-2 rounded-lg transition-colors">
+                    <FiCode />
+                    Tambah Kode
+                  </button>
                 </div>
-              </div>
+              </motion.section>
             ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="prose prose-invert max-w-none prose-lg"
-              >
+              /* Display Content Blocks */
+              blog.contentBlocks &&
+              blog.contentBlocks.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="space-y-8">
+                  {blog.contentBlocks.map((block, index) => (
+                    <motion.div key={block.id || index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }}>
+                      {block.type === "subtitle" && block.content && <h2 className="text-2xl sm:text-3xl font-bold text-white mt-8 mb-4">{block.content}</h2>}
+
+                      {block.type === "text" && block.content && (
+                        <div className="prose prose-invert max-w-none prose-lg">
+                          <div className="whitespace-pre-line leading-relaxed text-gray-300 text-lg">
+                            {block.content.split("\n").map((paragraph, i) => (
+                              <p key={i} className="mb-4">
+                                {paragraph || <br />}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {block.type === "image" && block.content && (
+                        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/20 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setSelectedImage(block.content)}>
+                          <img src={block.content} alt={`content-${index}`} className="w-full h-auto object-cover" />
+                        </div>
+                      )}
+
+                      {block.type === "youtube" && block.content && (
+                        <div className="my-6">
+                          <YouTubeEmbed url={block.content} title={`${blog.title} - Video ${index + 1}`} />
+                        </div>
+                      )}
+
+                      {block.type === "code" && block.content && (
+                        <div className="my-6">
+                          <div className="bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                            <div className="bg-orange-500/10 px-4 py-2 border-b border-white/10 flex items-center gap-2">
+                              <FiCode className="text-orange-400" />
+                              <span className="text-sm text-orange-400 font-medium">{block.language || "code"}</span>
+                            </div>
+                            <pre className="p-4 overflow-x-auto">
+                              <code className="text-sm font-mono text-gray-300">{block.content}</code>
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )
+            )}
+
+            {/* Legacy Content Display - for backward compatibility */}
+            {!isEditing && blog.content && (!blog.contentBlocks || blog.contentBlocks.length === 0) && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="prose prose-invert max-w-none prose-lg">
                 <div className="whitespace-pre-line leading-relaxed text-gray-300 text-lg">
-                  {blog.content.split('\n').map((paragraph, index) => (
+                  {blog.content.split("\n").map((paragraph, index) => (
                     <p key={index} className="mb-6">
                       {paragraph}
                     </p>
@@ -780,13 +1029,9 @@ export default function BlogDetail() {
               </motion.div>
             )}
 
-            {/* Images Gallery */}
+            {/* Images Gallery - Legacy support */}
             {isEditing ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6"
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6">
                 <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <FiImage className="text-purple-400" />
                   Edit Galeri Gambar
@@ -794,22 +1039,14 @@ export default function BlogDetail() {
                 </h3>
 
                 {/* Upload New Images */}
-                {(editImages.length + newImageFiles.length) < 6 && (
+                {editImages.length + newImageFiles.length < 6 && (
                   <div className="mb-6">
                     <label className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 px-5 py-3 rounded-xl cursor-pointer transition-all w-full sm:w-auto">
                       <FiPlus className="text-lg" />
                       <span>Tambah Gambar Baru</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleAddImages}
-                        className="hidden"
-                      />
+                      <input type="file" accept="image/*" multiple onChange={handleAddImages} className="hidden" />
                     </label>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Maksimal 5MB per gambar. Total: {editImages.length + newImageFiles.length}/6
-                    </p>
+                    <p className="text-xs text-gray-400 mt-2">Maksimal 5MB per gambar. Total: {editImages.length + newImageFiles.length}/6</p>
                   </div>
                 )}
 
@@ -819,22 +1056,10 @@ export default function BlogDetail() {
                     <h4 className="text-lg font-semibold mb-3 text-gray-300">Gambar Saat Ini</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {editImages.map((img, i) => (
-                        <div
-                          key={`existing-${i}`}
-                          className="relative group rounded-xl overflow-hidden border border-white/10 bg-black/20"
-                        >
-                          <img
-                            src={img}
-                            alt={`existing-${i}`}
-                            className="w-full h-32 object-cover"
-                          />
+                        <div key={`existing-${i}`} className="relative group rounded-xl overflow-hidden border border-white/10 bg-black/20">
+                          <img src={img} alt={`existing-${i}`} className="w-full h-32 object-cover" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => removeExistingImage(i)}
-                              className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors"
-                              title="Hapus gambar"
-                            >
+                            <button type="button" onClick={() => removeExistingImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
                               <FiTrash2 className="text-white text-sm" />
                             </button>
                           </div>
@@ -850,70 +1075,37 @@ export default function BlogDetail() {
                     <h4 className="text-lg font-semibold mb-3 text-gray-300">Gambar Baru (Belum Disimpan)</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {newImagePreviews.map((preview, i) => (
-                        <div
-                          key={`new-${i}`}
-                          className="relative group rounded-xl overflow-hidden border border-purple-500/50 bg-black/20"
-                        >
-                          <img
-                            src={preview}
-                            alt={`new-${i}`}
-                            className="w-full h-32 object-cover"
-                          />
-                          <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
-                            Baru
-                          </div>
+                        <div key={`new-${i}`} className="relative group rounded-xl overflow-hidden border border-purple-500/50 bg-black/20">
+                          <img src={preview} alt={`new-${i}`} className="w-full h-32 object-cover" />
+                          <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">Baru</div>
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => removeNewImage(i)}
-                              className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors"
-                              title="Hapus gambar"
-                            >
+                            <button type="button" onClick={() => removeNewImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
                               <FiTrash2 className="text-white text-sm" />
                             </button>
                           </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs truncate max-w-[calc(100%-1rem)]">
-                            {newImageFiles[i]?.name}
-                          </div>
+                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs truncate max-w-[calc(100%-1rem)]">{newImageFiles[i]?.name}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {editImages.length === 0 && newImageFiles.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">Belum ada gambar</p>
-                )}
+                {editImages.length === 0 && newImageFiles.length === 0 && <p className="text-center text-gray-500 py-4">Belum ada gambar</p>}
               </motion.div>
             ) : (
-              blog.images && blog.images.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="mt-12"
-                >
+              blog.images &&
+              blog.images.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-12">
                   <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
                     <FiImage className="text-purple-400" />
                     Galeri Gambar
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {blog.images.map((img, i) => (
-                      <motion.div
-                        key={i}
-                        whileHover={{ scale: 1.02 }}
-                        className="relative group cursor-pointer rounded-2xl overflow-hidden border border-white/10 bg-black/20"
-                        onClick={() => setSelectedImage(img)}
-                      >
-                        <img
-                          src={img}
-                          alt={`image-${i}`}
-                          className="w-full h-64 object-cover transition-transform group-hover:scale-105"
-                        />
+                      <motion.div key={i} whileHover={{ scale: 1.02 }} className="relative group cursor-pointer rounded-2xl overflow-hidden border border-white/10 bg-black/20" onClick={() => setSelectedImage(img)}>
+                        <img src={img} alt={`image-${i}`} className="w-full h-64 object-cover transition-transform group-hover:scale-105" />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="text-white text-sm bg-black/70 px-3 py-2 rounded-lg">
-                            Klik untuk memperbesar
-                          </div>
+                          <div className="text-white text-sm bg-black/70 px-3 py-2 rounded-lg">Klik untuk memperbesar</div>
                         </div>
                       </motion.div>
                     ))}
@@ -927,9 +1119,7 @@ export default function BlogDetail() {
           {isOwner && (
             <div className="px-8 pb-6">
               <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
-                <p className="text-blue-400 text-sm text-center">
-                  {isAdmin ? '🛠️ Anda adalah admin. Anda dapat mengedit atau menghapus blog ini.' : '🛠️ Anda adalah pemilik blog ini. Anda dapat mengedit atau menghapus blog ini.'}
-                </p>
+                <p className="text-blue-400 text-sm text-center">{isAdmin ? "🛠️ Anda adalah admin. Anda dapat mengedit atau menghapus blog ini." : "🛠️ Anda adalah pemilik blog ini. Anda dapat mengedit atau menghapus blog ini."}</p>
               </div>
             </div>
           )}
@@ -938,22 +1128,10 @@ export default function BlogDetail() {
 
       {/* Image Modal */}
       {selectedImage && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4"
-          onClick={() => setSelectedImage(null)}
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
           <div className="relative max-w-4xl max-h-full">
-            <img
-              src={selectedImage}
-              alt="Preview"
-              className="max-w-full max-h-full object-contain rounded-lg"
-            />
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors"
-            >
+            <img src={selectedImage} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" />
+            <button onClick={() => setSelectedImage(null)} className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors">
               <FiX className="text-xl" />
             </button>
           </div>

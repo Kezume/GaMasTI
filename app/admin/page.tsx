@@ -5,7 +5,8 @@ import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
-import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch } from "react-icons/fi";
+import { FiUsers, FiFileText, FiSettings, FiEye, FiEyeOff, FiTrash2, FiEdit3, FiUserCheck, FiUserX, FiCheck, FiX, FiBarChart, FiPlus, FiMail, FiSearch, FiHome } from "react-icons/fi";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import ConfirmModal from "@/components/ConfirmModal";
 
@@ -21,7 +22,7 @@ interface User {
 interface Blog {
   id: string;
   title: string;
-  content: string;
+  content?: string;
   authorName: string;
   authorId: string;
   status: string;
@@ -31,6 +32,7 @@ interface Blog {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [user, authLoading] = useAuthState(auth);
   const [users, setUsers] = useState<User[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -326,8 +328,14 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400">Panel Administrasi</p>
               </div>
             </div>
-            <div className="text-sm text-gray-400">
-              Logged in as: <span className="text-blue-400">{user.email}</span>
+            <div className="flex items-center gap-4">
+              <button onClick={() => router.push("/")} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-xl transition-all text-sm font-medium">
+                <FiHome className="text-base" />
+                <span className="hidden sm:inline">Back to Home</span>
+              </button>
+              <div className="text-sm text-gray-400 hidden md:block">
+                Logged in as: <span className="text-blue-400">{user.email}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -630,7 +638,7 @@ export default function AdminDashboard() {
                         <tr key={blog.id} className="border-b border-white/10 last:border-0 hover:bg-white/5">
                           <td className="p-4">
                             <p className="font-medium text-white line-clamp-2 text-sm sm:text-base">{blog.title}</p>
-                            <p className="text-xs text-gray-400 line-clamp-1">{blog.content.substring(0, 50)}...</p>
+                            <p className="text-xs text-gray-400 line-clamp-1">{blog.content ? blog.content.substring(0, 50) : "No content"}...</p>
                           </td>
                           <td className="p-4 text-gray-300 text-sm sm:text-base">{blog.authorName}</td>
                           <td className="p-4">

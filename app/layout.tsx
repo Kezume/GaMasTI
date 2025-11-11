@@ -1,7 +1,5 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 import "react-toastify/dist/ReactToastify.css";
 import UserSyncSafe from "@/components/UserSyncSafe"; // Ganti dengan yang aman
 import { ToastContainer } from "react-toastify";

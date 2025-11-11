@@ -8,27 +8,23 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
-import {
-  FiGithub,
-  FiCalendar,
-  FiSearch,
-  FiFilter,
-  FiBook,
-  FiUser,
-  FiHome,
-  FiPlus,
-  FiEye,
-  FiYoutube,
-  FiImage,
-} from "react-icons/fi";
+import { FiGithub, FiCalendar, FiSearch, FiFilter, FiBook, FiUser, FiHome, FiPlus, FiEye, FiYoutube, FiImage } from "react-icons/fi";
 
 // Interface Blog
+interface ContentBlock {
+  id: string;
+  type: "subtitle" | "text" | "youtube" | "image" | "code";
+  content: string;
+  language?: string;
+}
+
 interface Blog {
   id: string;
   title: string;
   content: string;
   images?: string[];
   youtubeUrls?: string[];
+  contentBlocks?: ContentBlock[];
   authorName: string;
   authorAvatar: string;
   authorId?: string;
@@ -36,6 +32,13 @@ interface Blog {
   createdAt?: { seconds: number };
   status?: string;
 }
+
+// Helper function to get first image from contentBlocks
+const getFirstImageFromBlocks = (contentBlocks?: ContentBlock[]): string | null => {
+  if (!contentBlocks || contentBlocks.length === 0) return null;
+  const firstImageBlock = contentBlocks.find((block) => block.type === "image");
+  return firstImageBlock?.content || null;
+};
 
 export default function BlogPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -66,6 +69,7 @@ export default function BlogPage() {
             content: data.content || "Konten tidak tersedia",
             images: data.images || [],
             youtubeUrls: data.youtubeUrls || [],
+            contentBlocks: data.contentBlocks || [],
             authorName: data.authorName || "Anonim",
             authorAvatar: data.authorAvatar || "/default-avatar.png",
             authorId: data.authorId || "",
@@ -75,9 +79,7 @@ export default function BlogPage() {
           };
         }) as Blog[];
 
-        const publishedBlogs = blogsData.filter(
-          (blog) => blog.status === "published" || !blog.status
-        );
+        const publishedBlogs = blogsData.filter((blog) => blog.status === "published" || !blog.status);
 
         setBlogs(publishedBlogs);
         setFilteredBlogs(publishedBlogs);
@@ -118,12 +120,7 @@ export default function BlogPage() {
       return;
     }
 
-    const filtered = blogs.filter(
-      (blog) =>
-        blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.authorName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = blogs.filter((blog) => blog.title.toLowerCase().includes(searchTerm.toLowerCase()) || blog.content.toLowerCase().includes(searchTerm.toLowerCase()) || blog.authorName.toLowerCase().includes(searchTerm.toLowerCase()));
     setFilteredBlogs(filtered);
   }, [searchTerm, blogs]);
 
@@ -143,12 +140,8 @@ export default function BlogPage() {
           <div className="w-16 h-16 sm:w-24 sm:h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 border border-red-500/30">
             <FiBook className="text-2xl sm:text-3xl text-red-400" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
-            Terjadi Kesalahan
-          </h1>
-          <p className="text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">
-            {error}
-          </p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">Terjadi Kesalahan</h1>
+          <p className="text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all shadow-lg text-sm sm:text-base"
@@ -163,32 +156,18 @@ export default function BlogPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white w-full overflow-x-hidden">
       {/* Enhanced Header - Responsif */}
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8 sm:mb-12 md:mb-16 relative w-full px-4 sm:px-6 pt-6 sm:pt-8"
-      >
+      <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8 sm:mb-12 md:mb-16 relative w-full px-4 sm:px-6 pt-6 sm:pt-8">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl rounded-full transform scale-150"></div>
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 relative">
-          <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent animate-gradient">
-            Blog Space
-          </span>
+          <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent animate-gradient">Blog Space</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-gray-300 w-full mx-auto leading-relaxed px-2 max-w-3xl">
-          Jelajahi dunia pengetahuan dan inspirasi dari mahasiswa Teknik
-          Informatika.
-          <span className="block text-cyan-400 font-medium mt-1 sm:mt-2 text-sm sm:text-base">
-            Temukan, Pelajari, dan Berbagi!
-          </span>
+          Jelajahi dunia pengetahuan dan inspirasi dari mahasiswa Teknik Informatika.
+          <span className="block text-cyan-400 font-medium mt-1 sm:mt-2 text-sm sm:text-base">Temukan, Pelajari, dan Berbagi!</span>
         </p>
 
         {/* Quick Actions - Responsif */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-6 sm:mt-8 px-2 w-full"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-6 sm:mt-8 px-2 w-full">
           <Link
             href="/"
             className="flex items-center gap-2 sm:gap-3 bg-white/10 hover:bg-white/20 border border-white/20 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-medium backdrop-blur-sm transition-all hover:scale-105 group relative z-10 text-sm sm:text-base"
@@ -220,12 +199,7 @@ export default function BlogPage() {
       </motion.div>
 
       {/* Enhanced Search Section - Responsif */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="mb-8 sm:mb-12 w-full px-4 sm:px-6"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-8 sm:mb-12 w-full px-4 sm:px-6">
         <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl w-full">
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 items-center justify-between w-full">
             <div className="flex-1 w-full">
@@ -244,16 +218,11 @@ export default function BlogPage() {
             <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto justify-between lg:justify-normal">
               <div className="flex items-center gap-2 sm:gap-3 bg-black/30 px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-cyan-500/20">
                 <FiFilter className="text-cyan-400 text-base sm:text-lg" />
-                <span className="text-gray-300 font-medium text-sm sm:text-base">
-                  {filteredBlogs.length} Blog
-                </span>
+                <span className="text-gray-300 font-medium text-sm sm:text-base">{filteredBlogs.length} Blog</span>
               </div>
 
               {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors text-sm sm:text-base whitespace-nowrap"
-                >
+                <button onClick={() => setSearchTerm("")} className="text-cyan-400 hover:text-cyan-300 underline transition-colors text-sm sm:text-base whitespace-nowrap">
                   Reset
                 </button>
               )}
@@ -292,21 +261,13 @@ export default function BlogPage() {
             ))}
           </div>
         ) : filteredBlogs.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-12 sm:py-16 md:py-20 bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl sm:rounded-3xl w-full"
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12 sm:py-16 md:py-20 bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl sm:rounded-3xl w-full">
             <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 border border-cyan-500/30">
               <FiSearch className="text-2xl sm:text-3xl md:text-4xl text-cyan-400" />
             </div>
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-200 mb-3 sm:mb-4">
-              {searchTerm ? "Tidak Ada Hasil" : "Belum Ada Blog"}
-            </h3>
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-200 mb-3 sm:mb-4">{searchTerm ? "Tidak Ada Hasil" : "Belum Ada Blog"}</h3>
             <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed px-4">
-              {searchTerm
-                ? `Maaf, tidak ada blog yang cocok dengan "${searchTerm}". Coba kata kunci lain atau lihat semua blog.`
-                : "Jadilah yang pertama membagikan pengetahuan dan inspirasi kepada komunitas!"}
+              {searchTerm ? `Maaf, tidak ada blog yang cocok dengan "${searchTerm}". Coba kata kunci lain atau lihat semua blog.` : "Jadilah yang pertama membagikan pengetahuan dan inspirasi kepada komunitas!"}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               {!userLoading && user && !searchTerm && (
@@ -338,12 +299,7 @@ export default function BlogPage() {
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
             {filteredBlogs.map((blog, i) => (
               <motion.article
                 key={blog.id}
@@ -365,91 +321,64 @@ export default function BlogPage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                 {/* Image - Responsif */}
-                {blog.images && blog.images.length > 0 ? (
-                  <Link
-                    href={`/blog/${blog.id}`}
-                    className="block relative h-32 sm:h-40 overflow-hidden w-full"
-                  >
-                    <img
-                      src={blog.images[0]}
-                      alt={blog.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                {(() => {
+                  const coverImage = blog.images?.[0] || getFirstImageFromBlocks(blog.contentBlocks);
 
-                    {/* YouTube Badge */}
-                    {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                      <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 backdrop-blur-sm">
-                        <FiYoutube className="text-xs" />
-                        <span className="text-xs">
-                          {blog.youtubeUrls.length}
+                  return coverImage ? (
+                    <Link href={`/blog/${blog.id}`} className="block relative h-32 sm:h-40 overflow-hidden w-full">
+                      <img src={coverImage} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                      {/* YouTube Badge */}
+                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                        <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 backdrop-blur-sm">
+                          <FiYoutube className="text-xs" />
+                          <span className="text-xs">{blog.youtubeUrls.length}</span>
+                        </div>
+                      )}
+
+                      <div className="absolute top-2 right-2">
+                        <span className="bg-cyan-500/90 text-white px-1.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                          <FiEye className="inline mr-1 text-xs" />
+                          Baca
                         </span>
                       </div>
-                    )}
+                    </Link>
+                  ) : (
+                    <Link href={`/blog/${blog.id}`} className="block h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden w-full">
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300"></div>
 
-                    <div className="absolute top-2 right-2">
-                      <span className="bg-cyan-500/90 text-white px-1.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
-                        <FiEye className="inline mr-1 text-xs" />
-                        Baca
-                      </span>
-                    </div>
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/blog/${blog.id}`}
-                    className="block h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden w-full"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300"></div>
+                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                        <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20 backdrop-blur-sm">
+                          <FiYoutube className="text-xs" />
+                          <span className="text-xs">{blog.youtubeUrls.length}</span>
+                        </div>
+                      )}
 
-                    {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                      <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20 backdrop-blur-sm">
-                        <FiYoutube className="text-xs" />
-                        <span className="text-xs">
-                          {blog.youtubeUrls.length}
-                        </span>
+                      <div className="text-center z-10">
+                        <FiBook className="text-xl sm:text-2xl text-cyan-400 mx-auto mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-300" />
+                        <p className="text-cyan-300 text-xs font-medium italic">Jelajahi Konten</p>
                       </div>
-                    )}
-
-                    <div className="text-center z-10">
-                      <FiBook className="text-xl sm:text-2xl text-cyan-400 mx-auto mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-300" />
-                      <p className="text-cyan-300 text-xs font-medium italic">
-                        Jelajahi Konten
-                      </p>
-                    </div>
-                  </Link>
-                )}
+                    </Link>
+                  );
+                })()}
 
                 {/* Content - Responsif */}
                 <div className="p-4 sm:p-5 relative z-10 w-full">
                   <Link href={`/blog/${blog.id}`}>
-                    <h3 className="font-bold text-base sm:text-lg mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors duration-200 leading-tight">
-                      {blog.title}
-                    </h3>
+                    <h3 className="font-bold text-base sm:text-lg mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors duration-200 leading-tight">{blog.title}</h3>
                   </Link>
 
-                  <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 leading-relaxed">
-                    {blog.content}
-                  </p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 leading-relaxed">{blog.content}</p>
 
                   {/* Author Info - Responsif */}
                   <div className="flex items-center justify-between mb-3 w-full">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={blog.authorAvatar}
-                        alt={blog.authorName}
-                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-200"
-                      />
+                      <img src={blog.authorAvatar} alt={blog.authorName} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-cyan-500/30 group-hover:border-cyan-500 transition-colors duration-200" />
                       <div>
-                        <p className="font-semibold text-white text-xs">
-                          {blog.authorName}
-                        </p>
+                        <p className="font-semibold text-white text-xs">{blog.authorName}</p>
                         {blog.githubUrl ? (
-                          <a
-                            href={blog.githubUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs"
-                          >
+                          <a href={blog.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs">
                             <FiGithub className="text-xs" />
                             <span className="text-xs">GitHub</span>
                           </a>
@@ -465,19 +394,14 @@ export default function BlogPage() {
                     {blog.createdAt && (
                       <div className="flex items-center gap-1 text-cyan-400 text-xs bg-cyan-500/10 px-2 py-1 rounded-full border border-cyan-500/20">
                         <FiCalendar className="text-xs" />
-                        <span className="text-xs">
-                          {formatDate(blog.createdAt.seconds)}
-                        </span>
+                        <span className="text-xs">{formatDate(blog.createdAt.seconds)}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Action Buttons - Responsif */}
                   <div className="flex items-center justify-between pt-3 border-t border-white/10 w-full">
-                    <Link
-                      href={`/blog/${blog.id}`}
-                      className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-all group/read"
-                    >
+                    <Link href={`/blog/${blog.id}`} className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-all group/read">
                       <span>Baca Lengkap</span>
                       <FiEye className="group-hover/read:translate-x-0.5 transition-transform duration-200 text-xs" />
                     </Link>
@@ -485,18 +409,11 @@ export default function BlogPage() {
                     {/* Action Buttons untuk pemilik */}
                     {blog.authorId && user && user.uid === blog.authorId && (
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/blog/edit/${blog.id}`}
-                          className="text-green-400 hover:text-green-300 text-xs transition-colors"
-                        >
+                        <Link href={`/blog/edit/${blog.id}`} className="text-green-400 hover:text-green-300 text-xs transition-colors">
                           Edit
                         </Link>
                         <span className="text-gray-600 text-xs">•</span>
-                        <DeleteBlogButton
-                          blogId={blog.id}
-                          authorId={blog.authorId}
-                          blogTitle={blog.title}
-                        />
+                        <DeleteBlogButton blogId={blog.id} authorId={blog.authorId} blogTitle={blog.title} />
                       </div>
                     )}
                   </div>
@@ -507,12 +424,7 @@ export default function BlogPage() {
         )}
 
         {/* Enhanced Back to Home - Responsif */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="text-center mt-8 sm:mt-12 md:mt-16 w-full"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="text-center mt-8 sm:mt-12 md:mt-16 w-full">
           <Link
             href="/"
             className="inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all shadow-lg hover:shadow-purple-500/25 hover:scale-105 relative z-10 text-sm sm:text-base"

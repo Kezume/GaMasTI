@@ -1,66 +1,124 @@
-// app/dashboard/page.tsx - CUSTOM GRID LAYOUT
+// app/dashboard/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { motion, AnimatePresence } from "framer-motion";
-import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiPlus, FiMove, FiMaximize2, FiArrowLeft, FiEdit2, FiCheck } from "react-icons/fi";
+import { motion } from "framer-motion";
+import { FiImage, FiUpload, FiX, FiFileText, FiType, FiYoutube, FiArrowLeft, FiEye, FiTrash2, FiArrowUp, FiArrowDown, FiEdit2, FiCode } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import GridLayout, { Layout } from "react-grid-layout";
 import { toast } from "react-toastify";
 import ConfirmModal from "@/components/ConfirmModal";
+import YoutubeEmbed from "@/components/YoutubeEmbed";
 
-// Interface Blog
-interface Blog {
+// Interface untuk Content Blocks
+type ContentBlockType = "subtitle" | "text" | "youtube" | "image" | "code";
+
+interface ContentBlock {
   id: string;
-  title: string;
+  type: ContentBlockType;
   content: string;
-  images?: string[];
-  youtubeUrls?: string[];
-  authorName: string;
-  authorAvatar: string;
-  authorId?: string;
-  githubUrl?: string;
-  createdAt?: { seconds: number };
-  status?: string;
+  language?: string;
 }
 
 export default function DashboardPage() {
   const [user, loading] = useAuthState(auth);
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [isAddingYoutube, setIsAddingYoutube] = useState(false);
-  const [youtubeInput, setYoutubeInput] = useState("");
   const router = useRouter();
-
-  // State untuk edit YouTube URL
-  const [editingYoutubeIndex, setEditingYoutubeIndex] = useState<number | null>(null);
-  const [editYoutubeInput, setEditYoutubeInput] = useState("");
-
-  // State untuk edit/replace gambar
-  const [replacingImageIndex, setReplacingImageIndex] = useState<number | null>(null);
 
   // Confirm modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
 
-  // State untuk grid layout - posisi bebas untuk setiap konten
-  const [layout, setLayout] = useState<Layout[]>([
-    { i: "title", x: 0, y: 0, w: 6, h: 2 }, // Judul di atas, full width
-    { i: "content", x: 0, y: 2, w: 4, h: 4 }, // Konten di kiri
-    { i: "youtube", x: 4, y: 2, w: 2, h: 4 }, // YouTube di kanan
-    { i: "images", x: 0, y: 6, w: 6, h: 5 }, // Images di bawah (lebih tinggi)
-  ]);
+  // Fungsi untuk Content Blocks
+  const generateId = () => Math.random().toString(36).substring(2, 11);
 
-  // Handle layout change
-  const handleLayoutChange = (newLayout: Layout[]) => {
-    setLayout(newLayout);
+  const addContentBlock = (type: ContentBlockType) => {
+    const newBlock: ContentBlock = {
+      id: generateId(),
+      type,
+      content: "",
+    };
+    setContentBlocks([...contentBlocks, newBlock]);
+  };
+
+  const updateContentBlock = (id: string, content: string) => {
+    setContentBlocks(contentBlocks.map((block) => (block.id === id ? { ...block, content } : block)));
+  };
+
+  const removeContentBlock = (id: string) => {
+    setContentBlocks(contentBlocks.filter((block) => block.id !== id));
+    toast.success("Block dihapus");
+  };
+
+  const moveContentBlockUp = (index: number) => {
+    if (index === 0) return;
+    const newBlocks = [...contentBlocks];
+    [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+    setContentBlocks(newBlocks);
+  };
+
+  const moveContentBlockDown = (index: number) => {
+    if (index === contentBlocks.length - 1) return;
+    const newBlocks = [...contentBlocks];
+    [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+    setContentBlocks(newBlocks);
+  };
+
+  const uploadImageToCloudinary = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const uploadBlockImage = async (id: string, file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 5MB");
+      return;
+    }
+
+    setUploading(true);
+    const loadingToast = toast.loading("Mengunggah gambar...");
+    try {
+      const imageUrl = await uploadImageToCloudinary(file);
+      updateContentBlock(id, imageUrl);
+      toast.update(loadingToast, {
+        render: "Gambar berhasil diunggah!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.update(loadingToast, {
+        render: "Gagal mengunggah gambar",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const extractYouTubeId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const isValidYouTubeUrl = (url: string): boolean => {
+    return extractYouTubeId(url) !== null;
   };
 
   // Loading state
@@ -91,120 +149,27 @@ export default function DashboardPage() {
       </div>
     );
 
-  // Fungsi untuk extract YouTube ID
-  const extractYouTubeId = (url: string): string | null => {
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  };
-
-  // Validasi URL YouTube
-  const isValidYouTubeUrl = (url: string): boolean => {
-    return extractYouTubeId(url) !== null;
-  };
-
-  // Tambah URL YouTube
-  const addYouTubeUrl = () => {
-    const trimmedUrl = youtubeInput.trim();
-
-    if (!trimmedUrl) {
-      toast.error("URL YouTube tidak boleh kosong");
-      return;
-    }
-
-    if (!isValidYouTubeUrl(trimmedUrl)) {
-      toast.error("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
-      return;
-    }
-
-    if (youtubeUrls.includes(trimmedUrl)) {
-      toast.warning("URL YouTube ini sudah ditambahkan");
-      return;
-    }
-
-    if (youtubeUrls.length >= 3) {
-      toast.warning("Maksimal 3 video YouTube yang dapat ditambahkan");
-      return;
-    }
-
-    setYoutubeUrls([...youtubeUrls, trimmedUrl]);
-    setYoutubeInput("");
-    setIsAddingYoutube(false);
-    toast.success("Video YouTube berhasil ditambahkan!");
-  };
-
-  // Hapus URL YouTube
-  const removeYouTubeUrl = (index: number) => {
-    const newUrls = youtubeUrls.filter((_, i) => i !== index);
-    setYoutubeUrls(newUrls);
-  };
-
-  // Edit URL YouTube
-  const startEditYouTubeUrl = (index: number) => {
-    setEditingYoutubeIndex(index);
-    setEditYoutubeInput(youtubeUrls[index]);
-  };
-
-  const saveEditYouTubeUrl = () => {
-    if (editingYoutubeIndex === null) return;
-
-    const trimmedUrl = editYoutubeInput.trim();
-
-    if (!trimmedUrl) {
-      toast.error("URL YouTube tidak boleh kosong");
-      return;
-    }
-
-    if (!isValidYouTubeUrl(trimmedUrl)) {
-      toast.error("URL YouTube tidak valid. Pastikan URL berasal dari YouTube.");
-      return;
-    }
-
-    // Check jika URL sudah ada di list (kecuali URL yang sedang diedit)
-    if (youtubeUrls.some((url, idx) => idx !== editingYoutubeIndex && url === trimmedUrl)) {
-      toast.warning("URL YouTube ini sudah ditambahkan");
-      return;
-    }
-
-    const newUrls = [...youtubeUrls];
-    newUrls[editingYoutubeIndex] = trimmedUrl;
-    setYoutubeUrls(newUrls);
-    setEditingYoutubeIndex(null);
-    setEditYoutubeInput("");
-    toast.success("URL YouTube berhasil diperbarui!");
-  };
-
-  const cancelEditYouTubeUrl = () => {
-    setEditingYoutubeIndex(null);
-    setEditYoutubeInput("");
-  };
-
-  const uploadImagesToCloudinary = async () => {
-    const uploadedUrls: string[] = [];
-    for (const file of images) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      uploadedUrls.push(data.secure_url);
-    }
-    return uploadedUrls;
-  };
-
   const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       toast.error("Judul blog harus diisi!");
       return;
     }
-    if (!content.trim()) {
-      toast.error("Konten blog harus diisi!");
+    if (contentBlocks.length === 0) {
+      toast.error("Tambahkan minimal satu konten block!");
       return;
+    }
+
+    // Validasi setiap block
+    for (const block of contentBlocks) {
+      if (!block.content.trim()) {
+        toast.error(`Block ${block.type} tidak boleh kosong`);
+        return;
+      }
+      if (block.type === "youtube" && !isValidYouTubeUrl(block.content)) {
+        toast.error("URL YouTube tidak valid");
+        return;
+      }
     }
 
     // Show confirm modal
@@ -217,7 +182,6 @@ export default function DashboardPage() {
     const loadingToast = toast.loading("Mempublikasikan blog...");
 
     try {
-      const imageUrls = images.length > 0 ? await uploadImagesToCloudinary() : [];
       const githubProfile = user.providerData.find((p) => p.providerId === "github.com");
       const githubUsername = githubProfile?.uid || githubProfile?.displayName || user.displayName || "";
 
@@ -244,9 +208,7 @@ export default function DashboardPage() {
       // Buat blog
       await addDoc(collection(db, "blogs"), {
         title: title.trim(),
-        content: content.trim(),
-        images: imageUrls,
-        youtubeUrls: youtubeUrls,
+        contentBlocks,
         authorName: user.displayName || "Anonim",
         authorAvatar: user.photoURL || "/default-avatar.png",
         authorId: user.uid,
@@ -255,6 +217,9 @@ export default function DashboardPage() {
         githubUrl: githubUsername ? `https://github.com/${githubUsername}` : "",
         createdAt: serverTimestamp(),
       });
+
+      setTitle("");
+      setContentBlocks([]);
 
       toast.update(loadingToast, {
         render: "Blog berhasil dipublikasikan! 🎉",
@@ -277,57 +242,6 @@ export default function DashboardPage() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-
-    // Validasi jumlah file
-    if (images.length + files.length > 6) {
-      toast.warning("Maksimal 6 gambar yang dapat diunggah");
-      return;
-    }
-
-    // Validasi ukuran file (max 5MB)
-    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
-    if (oversizedFiles.length > 0) {
-      toast.error("Beberapa file melebihi ukuran maksimal 5MB");
-      return;
-    }
-
-    setImages((prev) => [...prev, ...files]);
-    setPreviewUrls((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))]);
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Replace/Edit gambar
-  const handleReplaceImage = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return;
-    
-    const file = e.target.files[0];
-    
-    // Validasi ukuran file (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File melebihi ukuran maksimal 5MB");
-      return;
-    }
-
-    // Replace gambar dan preview URL
-    const newImages = [...images];
-    const newPreviewUrls = [...previewUrls];
-    
-    newImages[index] = file;
-    newPreviewUrls[index] = URL.createObjectURL(file);
-    
-    setImages(newImages);
-    setPreviewUrls(newPreviewUrls);
-    setReplacingImageIndex(null);
-    toast.success("Gambar berhasil diganti!");
   };
 
   return (
@@ -384,6 +298,7 @@ export default function DashboardPage() {
                 <div className="text-right text-xs text-gray-500 mt-1">{title.length}/100 karakter</div>
               </div>
 
+              {/* Content Blocks Section */}
               <div>
                 <label className="block mb-3 text-sm font-medium text-gray-300">
                   <div className="flex items-center gap-2 mb-2">
@@ -391,234 +306,212 @@ export default function DashboardPage() {
                     Konten Blog
                   </div>
                 </label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={8}
-                  className="w-full bg-black/30 border border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-500 resize-none"
-                  placeholder="Tulis konten blog Anda di sini..."
-                  maxLength={5000}
-                />
-                <div className="text-right text-xs text-gray-500 mt-1">{content.length}/5000 karakter</div>
-              </div>
 
-              {/* YouTube Section */}
-              <div>
-                <label className="block mb-3 text-sm font-medium text-gray-300">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FiYoutube className="text-red-500" />
-                    Video YouTube
-                    <span className="text-xs text-gray-500">(Opsional, maks. 3 video)</span>
-                  </div>
-                </label>
+                {/* Block List */}
+                {contentBlocks.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    {contentBlocks.map((block, index) => (
+                      <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                        {/* Block Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {block.type === "subtitle" && <FiType className="text-blue-400" />}
+                            {block.type === "text" && <FiFileText className="text-green-400" />}
+                            {block.type === "youtube" && <FiYoutube className="text-red-400" />}
+                            {block.type === "image" && <FiImage className="text-purple-400" />}
+                            {block.type === "code" && <FiCode className="text-orange-400" />}
+                            <span className="text-sm font-medium capitalize">{block.type}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => moveContentBlockUp(index)}
+                              disabled={index === 0}
+                              className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="Pindah ke atas"
+                            >
+                              <FiArrowUp />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveContentBlockDown(index)}
+                              disabled={index === contentBlocks.length - 1}
+                              className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="Pindah ke bawah"
+                            >
+                              <FiArrowDown />
+                            </button>
+                            <button type="button" onClick={() => removeContentBlock(block.id)} className="text-red-400 hover:text-red-300 transition-colors" title="Hapus block">
+                              <FiTrash2 />
+                            </button>
+                          </div>
+                        </div>
 
-                {!isAddingYoutube && youtubeUrls.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingYoutube(true)}
-                    className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 px-4 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-red-500/25 mb-4"
-                  >
-                    <FiYoutube className="text-lg" />
-                    <span>Tambah Video YouTube</span>
-                    <FiPlus className="text-lg" />
-                  </button>
-                )}
+                        {/* Block Content */}
+                        {block.type === "subtitle" && (
+                          <input
+                            type="text"
+                            value={block.content}
+                            onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                            placeholder="Masukkan subjudul..."
+                            className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            maxLength={200}
+                          />
+                        )}
 
-                {isAddingYoutube && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Masukkan URL YouTube</label>
-                      <input
-                        type="url"
-                        value={youtubeInput}
-                        onChange={(e) => setYoutubeInput(e.target.value)}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all placeholder-gray-500"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Contoh: https://youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID</p>
-                    </div>
+                        {block.type === "text" && (
+                          <textarea
+                            value={block.content}
+                            onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                            placeholder="Tulis konten..."
+                            rows={6}
+                            className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all resize-none"
+                          />
+                        )}
 
-                    <div className="flex gap-2">
-                      <button type="button" onClick={addYouTubeUrl} className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium transition-colors">
-                        Tambah
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAddingYoutube(false);
-                          setYoutubeInput("");
-                        }}
-                        className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
-                        Batal
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* YouTube URLs List */}
-                {youtubeUrls.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                      <FiYoutube className="text-red-500" />
-                      Video YouTube ({youtubeUrls.length}/3)
-                    </h4>
-
-                    <div className="grid gap-3">
-                      {youtubeUrls.map((url, index) => {
-                        const videoId = extractYouTubeId(url);
-                        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                        const isEditing = editingYoutubeIndex === index;
-
-                        return (
-                          <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-3">
-                            {isEditing ? (
-                              // Edit Mode
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-300 mb-2">Edit URL YouTube</label>
-                                  <input
-                                    type="url"
-                                    value={editYoutubeInput}
-                                    onChange={(e) => setEditYoutubeInput(e.target.value)}
-                                    placeholder="https://www.youtube.com/watch?v=..."
-                                    className="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all placeholder-gray-500"
-                                  />
-                                </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={saveEditYouTubeUrl}
-                                    className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                                  >
-                                    <FiCheck className="text-sm" />
-                                    Simpan
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={cancelEditYouTubeUrl}
-                                    className="bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                                  >
-                                    Batal
-                                  </button>
-                                </div>
+                        {block.type === "youtube" && (
+                          <div>
+                            <input
+                              type="url"
+                              value={block.content}
+                              onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                              placeholder="https://www.youtube.com/watch?v=..."
+                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                            />
+                            {block.content && isValidYouTubeUrl(block.content) && (
+                              <div className="mt-2 rounded-lg overflow-hidden">
+                                <YoutubeEmbed url={block.content} />
                               </div>
+                            )}
+                            {block.content && !isValidYouTubeUrl(block.content) && <p className="text-xs text-red-400 mt-1">URL YouTube tidak valid</p>}
+                          </div>
+                        )}
+
+                        {block.type === "image" && (
+                          <div>
+                            {!block.content ? (
+                              <label className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-4 py-3 rounded-lg cursor-pointer transition-all">
+                                <FiImage />
+                                <span>Pilih Gambar</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      if (file.size > 5 * 1024 * 1024) {
+                                        toast.error("File melebihi ukuran maksimal 5MB");
+                                        return;
+                                      }
+                                      uploadBlockImage(block.id, file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                              </label>
                             ) : (
-                              // Display Mode
-                              <div className="flex items-center gap-3 group">
-                                {/* Thumbnail */}
-                                <div className="flex-shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden relative">
-                                  {videoId ? (
-                                    <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-600 flex items-center justify-center">
-                                      <FiYoutube className="text-gray-400" />
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* URL Info */}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-white truncate">Video {index + 1}</p>
-                                  <p className="text-xs text-gray-400 truncate">{url}</p>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => startEditYouTubeUrl(index)}
-                                    className="text-blue-400 hover:text-blue-300 transition-colors p-1"
-                                    title="Edit video"
-                                  >
-                                    <FiEdit2 className="text-lg" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeYouTubeUrl(index)}
-                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
-                                    title="Hapus video"
-                                  >
-                                    <FiX className="text-lg" />
+                              <div className="relative group rounded-lg overflow-hidden">
+                                <img src={block.content} alt="Block" className="w-full h-48 object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <label className="bg-blue-500 hover:bg-blue-600 p-2 rounded-full transition-colors cursor-pointer">
+                                    <FiEdit2 className="text-white" />
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          if (file.size > 5 * 1024 * 1024) {
+                                            toast.error("File melebihi ukuran maksimal 5MB");
+                                            return;
+                                          }
+                                          uploadBlockImage(block.id, file);
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  <button type="button" onClick={() => updateContentBlock(block.id, "")} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors">
+                                    <FiX className="text-white" />
                                   </button>
                                 </div>
                               </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
 
-                    {youtubeUrls.length >= 3 && <p className="text-xs text-yellow-400 text-center">Maksimal 3 video YouTube telah tercapai</p>}
+                        {block.type === "code" && (
+                          <div className="space-y-2">
+                            <select
+                              value={block.language || "javascript"}
+                              onChange={(e) => {
+                                const newBlocks = contentBlocks.map((b) => (b.id === block.id ? { ...b, language: e.target.value } : b));
+                                setContentBlocks(newBlocks);
+                              }}
+                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                            >
+                              <option value="javascript">JavaScript</option>
+                              <option value="typescript">TypeScript</option>
+                              <option value="python">Python</option>
+                              <option value="java">Java</option>
+                              <option value="cpp">C++</option>
+                              <option value="csharp">C#</option>
+                              <option value="html">HTML</option>
+                              <option value="css">CSS</option>
+                              <option value="sql">SQL</option>
+                              <option value="bash">Bash</option>
+                              <option value="json">JSON</option>
+                              <option value="xml">XML</option>
+                            </select>
+                            <textarea
+                              value={block.content}
+                              onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                              placeholder="Paste kode Anda di sini..."
+                              rows={10}
+                              className="w-full bg-black/30 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none font-mono text-sm"
+                              spellCheck={false}
+                            />
+                            {block.content && (
+                              <div className="text-xs text-gray-400">
+                                {block.content.split("\n").length} baris, {block.content.length} karakter
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
 
-              {/* Image Upload Section */}
-              <div>
-                <label className="block mb-3 text-sm font-medium text-gray-300">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FiImage className="text-purple-400" />
-                    Gambar Pendukung
-                    <span className="text-xs text-gray-500">(Opsional, maks. 6 file)</span>
-                  </div>
-                </label>
-
-                <div className="flex items-center gap-3 mb-4">
-                  <label className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-purple-500/25">
-                    <FiImage className="text-lg" />
-                    <span>Pilih Gambar</span>
-                    <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
-                  </label>
-
-                  {images.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImages([]);
-                        setPreviewUrls([]);
-                      }}
-                      className="text-sm text-red-400 hover:text-red-300 underline transition-colors"
-                    >
-                      Hapus semua
-                    </button>
-                  )}
+                {/* Add Block Buttons */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <button type="button" onClick={() => addContentBlock("subtitle")} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition-all">
+                    <FiType />
+                    <span className="text-sm">Subjudul</span>
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("text")} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-3 rounded-lg transition-all">
+                    <FiFileText />
+                    <span className="text-sm">Teks</span>
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("youtube")} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg transition-all">
+                    <FiYoutube />
+                    <span className="text-sm">YouTube</span>
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("image")} className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg transition-all">
+                    <FiImage />
+                    <span className="text-sm">Gambar</span>
+                  </button>
+                  <button type="button" onClick={() => addContentBlock("code")} className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 px-4 py-3 rounded-lg transition-all">
+                    <FiCode />
+                    <span className="text-sm">Kode</span>
+                  </button>
                 </div>
-
-                <AnimatePresence>
-                  {previewUrls.length > 0 && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-                      {previewUrls.map((url, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="relative group rounded-xl overflow-hidden border border-gray-600 bg-black/20">
-                          <img src={url} alt={`preview-${i}`} className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-300" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            {/* Replace Button */}
-                            <label className="bg-blue-500 hover:bg-blue-600 p-2 rounded-full transition-colors cursor-pointer" title="Ganti gambar">
-                              <FiEdit2 className="text-white text-sm" />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleReplaceImage(i, e)}
-                                className="hidden"
-                              />
-                            </label>
-                            {/* Remove Button */}
-                            <button type="button" onClick={() => handleRemoveImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
-                              <FiX className="text-white text-sm" />
-                            </button>
-                          </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs truncate max-w-[calc(100%-1rem)]">{images[i]?.name}</div>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
               <div className="pt-6 border-t border-gray-700">
                 <button
                   type="submit"
-                  disabled={uploading || !title.trim() || !content.trim()}
+                  disabled={uploading || !title.trim()}
                   className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-600 px-8 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-blue-500/25 disabled:shadow-none"
                 >
                   <FiUpload className="text-lg" />
@@ -628,133 +521,107 @@ export default function DashboardPage() {
             </form>
           </motion.div>
 
-          {/* PREVIEW WITH CUSTOM GRID LAYOUT */}
+          {/* PREVIEW */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl h-fit sticky top-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-green-500/20 rounded-lg">
-                <FiMaximize2 className="text-2xl text-green-400" />
+                <FiEye className="text-2xl text-green-400" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold">Preview Blog</h2>
-                <p className="text-gray-400 text-sm">Drag & resize untuk atur posisi bebas</p>
+                <p className="text-gray-400 text-sm">Tampilan blog Anda</p>
               </div>
             </div>
 
-            {title || content || previewUrls.length > 0 || youtubeUrls.length > 0 ? (
-              <div className="relative">
-                <GridLayout className="layout" layout={layout} cols={6} rowHeight={60} width={600} onLayoutChange={handleLayoutChange} draggableHandle=".drag-handle" compactType={null} preventCollision={true}>
-                  {/* TITLE BLOCK */}
-                  <div key="title" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                    <div className="drag-handle bg-blue-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
-                      <FiMove className="text-sm text-blue-400" />
-                      <span className="text-xs font-medium text-blue-400">Judul</span>
+            {title || contentBlocks.length > 0 ? (
+              <div className="space-y-6">
+                {/* TITLE SECTION */}
+                {title && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/20 rounded-xl border border-white/5 p-6">
+                    <div className="flex items-center gap-2 text-xs text-blue-400 mb-3">
+                      <FiType className="text-sm" />
+                      <span className="font-medium">Judul</span>
                     </div>
-                    <div className="p-4">
-                      <h3 className="text-xl font-bold text-white mb-2 leading-tight line-clamp-2">{title || "Judul Blog Anda"}</h3>
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <img src={user.photoURL || "/default-avatar.png"} alt="Author" className="w-5 h-5 rounded-full" />
-                        <span className="truncate">{user.displayName || "Anonim"}</span>
-                        <span>•</span>
-                        <span>{new Date().toLocaleDateString("id-ID", { month: "short", day: "numeric" })}</span>
-                      </div>
+                    <h3 className="text-2xl font-bold text-white mb-3 leading-tight">{title}</h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <img src={user.photoURL || "/default-avatar.png"} alt="Author" className="w-6 h-6 rounded-full" />
+                      <span className="truncate">{user.displayName || "Anonim"}</span>
+                      <span>•</span>
+                      <span>{new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
                     </div>
-                  </div>
+                  </motion.div>
+                )}
 
-                  {/* CONTENT BLOCK */}
-                  <div key="content" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                    <div className="drag-handle bg-green-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
-                      <FiMove className="text-sm text-green-400" />
-                      <span className="text-xs font-medium text-green-400">Deskripsi</span>
-                    </div>
-                    <div className="p-4 overflow-auto h-[calc(100%-40px)]">
-                      <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line line-clamp-6">{content || "Konten blog Anda akan muncul di sini..."}</p>
-                    </div>
-                  </div>
+                {/* CONTENT BLOCKS */}
+                {contentBlocks.map((block, index) => (
+                  <motion.div key={block.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * (index + 1) }} className="bg-black/20 rounded-xl border border-white/5 p-6">
+                    {block.type === "subtitle" && block.content && (
+                      <>
+                        <div className="flex items-center gap-2 text-xs text-blue-400 mb-3">
+                          <FiType className="text-sm" />
+                          <span className="font-medium">Subjudul</span>
+                        </div>
+                        <h4 className="text-xl font-semibold text-white">{block.content}</h4>
+                      </>
+                    )}
 
-                  {/* YOUTUBE BLOCK */}
-                  {youtubeUrls.length > 0 && (
-                    <div key="youtube" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                      <div className="drag-handle bg-red-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
-                        <FiMove className="text-sm text-red-400" />
-                        <span className="text-xs font-medium text-red-400">Video YouTube ({youtubeUrls.length})</span>
-                      </div>
-                      <div className="p-4 overflow-auto h-[calc(100%-40px)] space-y-3">
-                        {youtubeUrls.slice(0, 2).map((url, index) => {
-                          const videoId = extractYouTubeId(url);
-                          const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    {block.type === "text" && block.content && (
+                      <>
+                        <div className="flex items-center gap-2 text-xs text-green-400 mb-3">
+                          <FiFileText className="text-sm" />
+                          <span className="font-medium">Konten</span>
+                        </div>
+                        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{block.content}</p>
+                      </>
+                    )}
 
-                          return (
-                            <div key={index} className="relative aspect-video bg-black rounded overflow-hidden border border-gray-700">
-                              <img src={thumbnailUrl} alt={`YouTube ${index + 1}`} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
-                                  <FiYoutube className="text-white text-lg" />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    {block.type === "youtube" && block.content && isValidYouTubeUrl(block.content) && (
+                      <>
+                        <div className="flex items-center gap-2 text-xs text-red-400 mb-4">
+                          <FiYoutube className="text-sm" />
+                          <span className="font-medium">Video YouTube</span>
+                        </div>
+                        <div className="rounded-lg overflow-hidden">
+                          <YoutubeEmbed url={block.content} />
+                        </div>
+                      </>
+                    )}
 
-                  {/* IMAGES BLOCK */}
-                  {previewUrls.length > 0 && (
-                    <div key="images" className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                      <div className="drag-handle bg-purple-500/10 px-3 py-2 cursor-move border-b border-white/5 flex items-center gap-2">
-                        <FiMove className="text-sm text-purple-400" />
-                        <span className="text-xs font-medium text-purple-400">Gambar ({previewUrls.length})</span>
-                      </div>
-                      <div className="p-3 overflow-auto h-[calc(100%-40px)]">
-                        {previewUrls.length === 1 ? (
-                          // Single image - full size
-                          <img src={previewUrls[0]} alt="preview" className="rounded border border-gray-700 w-full h-full object-cover" />
-                        ) : previewUrls.length === 2 ? (
-                          // Two images - side by side
-                          <div className="grid grid-cols-2 gap-3 h-full">
-                            {previewUrls.map((url, i) => (
-                              <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full object-cover" />
-                            ))}
-                          </div>
-                        ) : previewUrls.length === 3 ? (
-                          // Three images - 2 top, 1 bottom
-                          <div className="grid grid-rows-2 gap-3 h-full">
-                            <div className="grid grid-cols-2 gap-3">
-                              {previewUrls.slice(0, 2).map((url, i) => (
-                                <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full object-cover" />
-                              ))}
-                            </div>
-                            <img src={previewUrls[2]} alt="preview-2" className="rounded border border-gray-700 w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          // Multiple images - grid layout
-                          <div className="grid grid-cols-2 gap-3 auto-rows-fr h-full">
-                            {previewUrls.slice(0, 6).map((url, i) => (
-                              <img key={i} src={url} alt={`preview-${i}`} className="rounded border border-gray-700 w-full h-full min-h-[120px] object-cover" />
-                            ))}
-                          </div>
-                        )}
-                        {previewUrls.length > 6 && <p className="text-xs text-gray-500 mt-2 text-center">+{previewUrls.length - 6} lainnya</p>}
-                      </div>
-                    </div>
-                  )}
-                </GridLayout>
+                    {block.type === "image" && block.content && (
+                      <>
+                        <div className="flex items-center gap-2 text-xs text-purple-400 mb-4">
+                          <FiImage className="text-sm" />
+                          <span className="font-medium">Gambar</span>
+                        </div>
+                        <div className="rounded-lg overflow-hidden">
+                          <img src={block.content} alt="Block" className="w-full h-auto object-cover" />
+                        </div>
+                      </>
+                    )}
 
-                {/* Info */}
-                <div className="mt-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-xs text-blue-300 flex items-center gap-2">
-                    <FiMaximize2 className="text-sm" />
-                    <span>Drag header untuk pindah posisi • Drag sudut kanan bawah untuk resize</span>
-                  </p>
-                </div>
+                    {block.type === "code" && block.content && (
+                      <>
+                        <div className="flex items-center gap-2 text-xs text-orange-400 mb-4">
+                          <FiCode className="text-sm" />
+                          <span className="font-medium">Kode ({block.language || "javascript"})</span>
+                        </div>
+                        <div className="rounded-lg overflow-hidden bg-black/40 border border-gray-700">
+                          <pre className="p-4 overflow-x-auto">
+                            <code className="text-sm font-mono text-gray-300">{block.content}</code>
+                          </pre>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="text-center py-16">
+                <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiFileText className="text-2xl text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-300 mb-2">Preview Belum Tersedia</h3>
-                <p className="text-gray-500 text-sm">Mulai menulis di form sebelah kiri untuk melihat preview blog di sini</p>
+                <p className="text-gray-500 text-sm max-w-xs mx-auto">Mulai menulis di form sebelah kiri untuk melihat preview blog di sini</p>
               </div>
             )}
           </motion.div>

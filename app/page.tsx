@@ -3,24 +3,19 @@
 
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, doc, setDoc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import AuthButton from "@/components/AuthButton";
-import {
-  FiPlusCircle,
-  FiGithub,
-  FiCalendar,
-  FiEye,
-  FiTrendingUp,
-  FiBook,
-  FiSettings,
-  FiYoutube,
-  FiImage,
-  FiMenu,
-  FiX,
-} from "react-icons/fi";
+import { FiPlusCircle, FiGithub, FiCalendar, FiEye, FiTrendingUp, FiBook, FiSettings, FiYoutube, FiImage, FiMenu, FiX } from "react-icons/fi";
+
+interface ContentBlock {
+  id: string;
+  type: "subtitle" | "text" | "youtube" | "image" | "code";
+  content: string;
+  language?: string;
+}
 
 interface Blog {
   id: string;
@@ -28,6 +23,7 @@ interface Blog {
   content: string;
   images?: string[];
   youtubeUrls?: string[];
+  contentBlocks?: ContentBlock[];
   authorName?: string;
   authorAvatar?: string;
   authorId?: string;
@@ -36,12 +32,20 @@ interface Blog {
   status?: string;
 }
 
+// Helper function to get first image from contentBlocks
+const getFirstImageFromBlocks = (contentBlocks?: ContentBlock[]): string | null => {
+  if (!contentBlocks || contentBlocks.length === 0) return null;
+  const firstImageBlock = contentBlocks.find((block) => block.type === "image");
+  return firstImageBlock?.content || null;
+};
+
 export default function HomePage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [visitorCount, setVisitorCount] = useState<number>(0);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -112,6 +116,39 @@ export default function HomePage() {
     fetchBlogs();
   }, []);
 
+  // Track visitor and get visitor count
+  useEffect(() => {
+    const trackVisitor = async () => {
+      try {
+        const visitorDocRef = doc(db, "analytics", "visitors");
+        const visitorDoc = await getDoc(visitorDocRef);
+
+        if (visitorDoc.exists()) {
+          // Update visitor count
+          await updateDoc(visitorDocRef, {
+            count: increment(1),
+            lastVisit: new Date(),
+          });
+          setVisitorCount(visitorDoc.data().count + 1);
+        } else {
+          // Create visitor document if not exists
+          await setDoc(visitorDocRef, {
+            count: 1,
+            lastVisit: new Date(),
+            createdAt: new Date(),
+          });
+          setVisitorCount(1);
+        }
+      } catch (error) {
+        console.error("Error tracking visitor:", error);
+        // Fallback to default if error
+        setVisitorCount(0);
+      }
+    };
+
+    trackVisitor();
+  }, []);
+
   const formatDate = (seconds: number) => {
     if (!seconds) return "Tanggal tidak tersedia";
     return new Date(seconds * 1000).toLocaleDateString("id-ID", {
@@ -129,10 +166,7 @@ export default function HomePage() {
       <header className="fixed top-0 left-0 w-full z-50 bg-black/95 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 group flex-shrink-0"
-          >
+          <Link href="/" className="flex items-center gap-3 group flex-shrink-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
               {/* Ganti dengan logo riset Anda */}
               {/* // Ganti path logo dengan absolute path */}
@@ -151,40 +185,27 @@ export default function HomePage() {
                 }}
               />
               {/* Fallback text jika logo tidak ada */}
-              <span className="font-bold text-white text-sm sm:text-lg hidden">
-                TI
-              </span>
+              <span className="font-bold text-white text-sm sm:text-lg hidden">TI</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight group-hover:text-blue-400 transition-colors">
-                GAMASTI
-              </h1>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight group-hover:text-blue-400 transition-colors">GAMASTI</h1>
               <p className="text-xs text-gray-400">By HMPTI</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-4 xl:gap-6">
-            <Link
-              href="/"
-              className="text-white font-medium hover:text-blue-400 transition-colors px-3 py-2"
-            >
+            <Link href="/" className="text-white font-medium hover:text-blue-400 transition-colors px-3 py-2">
               Beranda
             </Link>
-            <Link
-              href="/blog"
-              className="flex items-center gap-2 text-gray-300 hover:text-blue-400 transition-colors group px-3 py-2"
-            >
+            <Link href="/blog" className="flex items-center gap-2 text-gray-300 hover:text-blue-400 transition-colors group px-3 py-2">
               <FiBook className="text-lg group-hover:scale-110 transition-transform" />
               <span>Semua Blog</span>
             </Link>
 
             {/* Admin Link */}
             {user && isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-2 rounded-xl transition-all text-sm"
-              >
+              <Link href="/admin" className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-2 rounded-xl transition-all text-sm">
                 <FiSettings className="text-lg" />
                 <span>Admin</span>
               </Link>
@@ -209,22 +230,12 @@ export default function HomePage() {
           {/* Mobile Menu Button */}
           <div className="flex lg:hidden items-center gap-2">
             {user && (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 p-2 rounded-xl font-medium text-sm mr-2"
-              >
+              <Link href="/dashboard" className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 p-2 rounded-xl font-medium text-sm mr-2">
                 <FiPlusCircle className="text-lg" />
               </Link>
             )}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              {mobileMenuOpen ? (
-                <FiX className="text-xl" />
-              ) : (
-                <FiMenu className="text-xl" />
-              )}
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+              {mobileMenuOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
             </button>
           </div>
         </div>
@@ -232,39 +243,22 @@ export default function HomePage() {
         {/* Mobile Navigation Menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl"
-            >
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="lg:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl">
               <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
-                <Link
-                  href="/"
-                  className="flex items-center gap-3 text-white font-medium py-3 px-4 rounded-xl hover:bg-white/10 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
+                <Link href="/" className="flex items-center gap-3 text-white font-medium py-3 px-4 rounded-xl hover:bg-white/10 transition-colors" onClick={() => setMobileMenuOpen(false)}>
                   <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
                     <span className="text-sm">🏠</span>
                   </div>
                   <span>Beranda</span>
                 </Link>
-                <Link
-                  href="/blog"
-                  className="flex items-center gap-3 text-gray-300 hover:text-blue-400 transition-colors py-3 px-4 rounded-xl hover:bg-white/10"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
+                <Link href="/blog" className="flex items-center gap-3 text-gray-300 hover:text-blue-400 transition-colors py-3 px-4 rounded-xl hover:bg-white/10" onClick={() => setMobileMenuOpen(false)}>
                   <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
                     <FiBook className="text-sm" />
                   </div>
                   <span>Semua Blog</span>
                 </Link>
                 {user && isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-3 text-purple-400 hover:text-purple-300 transition-colors py-3 px-4 rounded-xl hover:bg-purple-500/10"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/admin" className="flex items-center gap-3 text-purple-400 hover:text-purple-300 transition-colors py-3 px-4 rounded-xl hover:bg-purple-500/10" onClick={() => setMobileMenuOpen(false)}>
                     <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
                       <FiSettings className="text-sm" />
                     </div>
@@ -272,11 +266,7 @@ export default function HomePage() {
                   </Link>
                 )}
                 {user && (
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-3 text-gray-300 hover:text-blue-400 transition-colors py-3 px-4 rounded-xl hover:bg-white/10"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard" className="flex items-center gap-3 text-gray-300 hover:text-blue-400 transition-colors py-3 px-4 rounded-xl hover:bg-white/10" onClick={() => setMobileMenuOpen(false)}>
                     <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
                       <FiPlusCircle className="text-sm" />
                     </div>
@@ -304,34 +294,16 @@ export default function HomePage() {
           <div className="absolute -bottom-20 -left-20 w-60 h-60 sm:w-80 sm:h-80 bg-cyan-500/10 rounded-full blur-3xl"></div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 w-full max-w-6xl mx-auto"
-        >
+        <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10 w-full max-w-6xl mx-auto">
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold mb-4 sm:mb-6 px-2">
-            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">
-              GAMASTI
-            </span>
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">GAMASTI</span>
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-4"
-          >
-            Platform kolaborasi mahasiswa Teknik Informatika untuk berbagi
-            karya, inovasi, dan pengetahuan dalam dunia teknologi
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-4">
+            Mahasiswa Teknik Informatika Universitas Duta Bangsa Bersatu dalam semangat riset, kolaborasi, dan inovasi untuk kemajuan teknologi informasi.
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 px-4"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.8 }} className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 px-4">
             <Link
               href="#blogs"
               className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all text-center text-sm sm:text-base"
@@ -349,50 +321,29 @@ export default function HomePage() {
         </motion.div>
 
         {/* Stats - Responsif */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.8 }}
-          className="relative z-10 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto w-full px-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.8 }} className="relative z-10 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto w-full px-4">
           {[
             { icon: FiTrendingUp, label: "Blog Aktif", value: blogs.length },
-            { icon: FiEye, label: "Pengunjung", value: "1K+" },
+            { icon: FiEye, label: "Pengunjung", value: visitorCount > 0 ? visitorCount.toLocaleString("id-ID") : "..." },
             { icon: FiCalendar, label: "Tahun Aktif", value: "2025" },
           ].map((stat, index) => (
             <div key={index} className="text-center">
               <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/5 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 border border-white/10">
                 <stat.icon className="text-lg sm:text-xl md:text-2xl text-cyan-400" />
               </div>
-              <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">
-                {stat.value}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-400 leading-tight">
-                {stat.label}
-              </div>
+              <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-gray-400 leading-tight">{stat.label}</div>
             </div>
           ))}
         </motion.div>
       </section>
 
       {/* BLOG LIST SECTION - RESPONSIF */}
-      <section
-        id="blogs"
-        className="max-w-7xl mx-auto mt-12 sm:mt-16 md:mt-20 px-4 sm:px-6 pb-16 sm:pb-20 md:pb-24 w-full"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4"
-        >
+      <section id="blogs" className="max-w-7xl mx-auto mt-12 sm:mt-16 md:mt-20 px-4 sm:px-6 pb-16 sm:pb-20 md:pb-24 w-full">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4">
           <div className="flex-1">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
-              ✨ Karya Terbaru
-            </h2>
-            <p className="text-gray-400 text-sm sm:text-base">
-              3 blog terbaru dari mahasiswa Teknik Informatika
-            </p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">✨ Karya Terbaru</h2>
+            <p className="text-gray-400 text-sm sm:text-base">3 blog terbaru dari mahasiswa Teknik Informatika</p>
           </div>
 
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
@@ -420,10 +371,7 @@ export default function HomePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-5 animate-pulse"
-              >
+              <div key={i} className="bg-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-5 animate-pulse">
                 <div className="h-32 sm:h-40 bg-gray-700 rounded-lg sm:rounded-xl mb-3 sm:mb-4"></div>
                 <div className="h-4 bg-gray-700 rounded mb-2 sm:mb-3"></div>
                 <div className="h-4 bg-gray-700 rounded mb-2 w-3/4"></div>
@@ -440,19 +388,10 @@ export default function HomePage() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
               <FiBook className="text-xl sm:text-2xl text-gray-400" />
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-300 mb-3">
-              Belum Ada Blog
-            </h3>
-            <p className="text-gray-500 max-w-md mx-auto mb-6 text-sm sm:text-base">
-              {user
-                ? "Mulai buat blog pertama Anda!"
-                : "Belum ada blog yang dipublikasikan."}
-            </p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-300 mb-3">Belum Ada Blog</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-6 text-sm sm:text-base">{user ? "Mulai buat blog pertama Anda!" : "Belum ada blog yang dipublikasikan."}</p>
             {user && (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-4 sm:px-5 py-2.5 rounded-xl font-medium transition-colors text-sm sm:text-base"
-              >
+              <Link href="/dashboard" className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-4 sm:px-5 py-2.5 rounded-xl font-medium transition-colors text-sm sm:text-base">
                 <FiPlusCircle />
                 Buat Blog Pertama
               </Link>
@@ -469,89 +408,68 @@ export default function HomePage() {
                 className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1"
               >
                 {/* IMAGE */}
-                {blog.images && blog.images.length > 0 ? (
-                  <Link href={`/blog/${blog.id}`}>
-                    <div className="relative h-32 sm:h-40 overflow-hidden">
-                      <img
-                        src={blog.images[0]}
-                        alt={blog.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                {(() => {
+                  const coverImage = blog.images?.[0] || getFirstImageFromBlocks(blog.contentBlocks);
+                  const imageCount = blog.images?.length || blog.contentBlocks?.filter((b) => b.type === "image").length || 0;
 
-                      {/* YouTube Badge */}
-                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                        <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1">
-                          <FiYoutube className="text-xs" />
-                          <span className="text-xs">
-                            {blog.youtubeUrls.length}
-                          </span>
-                        </div>
-                      )}
+                  return coverImage ? (
+                    <Link href={`/blog/${blog.id}`}>
+                      <div className="relative h-32 sm:h-40 overflow-hidden">
+                        <img src={coverImage} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-                      <div className="absolute top-2 right-2">
-                        <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-1.5 py-1 rounded-full border border-white/20">
-                          {blog.images.length} foto
+                        {/* YouTube Badge */}
+                        {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                          <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1">
+                            <FiYoutube className="text-xs" />
+                            <span className="text-xs">{blog.youtubeUrls.length}</span>
+                          </div>
+                        )}
+
+                        <div className="absolute top-2 right-2">
+                          <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-1.5 py-1 rounded-full border border-white/20">{imageCount} foto</div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                ) : (
-                  <Link href={`/blog/${blog.id}`}>
-                    <div className="h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10"></div>
+                    </Link>
+                  ) : (
+                    <Link href={`/blog/${blog.id}`}>
+                      <div className="h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10"></div>
 
-                      {/* YouTube Badge */}
-                      {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                        <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20">
-                          <FiYoutube className="text-xs" />
-                          <span className="text-xs">
-                            {blog.youtubeUrls.length}
-                          </span>
+                        {/* YouTube Badge */}
+                        {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+                          <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20">
+                            <FiYoutube className="text-xs" />
+                            <span className="text-xs">{blog.youtubeUrls.length}</span>
+                          </div>
+                        )}
+
+                        <div className="text-center z-10">
+                          <FiBook className="text-2xl sm:text-3xl text-gray-600 mx-auto mb-1" />
+                          <p className="text-gray-500 text-xs italic">Tidak ada gambar</p>
                         </div>
-                      )}
-
-                      <div className="text-center z-10">
-                        <FiBook className="text-2xl sm:text-3xl text-gray-600 mx-auto mb-1" />
-                        <p className="text-gray-500 text-xs italic">
-                          Tidak ada gambar
-                        </p>
                       </div>
-                    </div>
-                  </Link>
-                )}
+                    </Link>
+                  );
+                })()}
 
                 {/* CONTENT */}
                 <div className="p-4 sm:p-5">
                   <div className="mb-3 sm:mb-4">
                     <Link href={`/blog/${blog.id}`}>
-                      <h3 className="font-bold text-sm sm:text-base mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
-                        {blog.title}
-                      </h3>
+                      <h3 className="font-bold text-sm sm:text-base mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">{blog.title}</h3>
                     </Link>
-                    <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 leading-relaxed mb-2 sm:mb-3">
-                      {blog.content}
-                    </p>
+                    <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 leading-relaxed mb-2 sm:mb-3">{blog.content}</p>
                   </div>
 
                   {/* AUTHOR + META */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={blog.authorAvatar || "/default-avatar.png"}
-                        alt={blog.authorName}
-                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/20"
-                      />
-                      <span className="text-xs text-gray-300 font-medium">
-                        {blog.authorName || "Anonim"}
-                      </span>
+                      <img src={blog.authorAvatar || "/default-avatar.png"} alt={blog.authorName} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/20" />
+                      <span className="text-xs text-gray-300 font-medium">{blog.authorName || "Anonim"}</span>
                     </div>
 
-                    {blog.createdAt && (
-                      <div className="text-xs text-gray-500">
-                        {formatDate(blog.createdAt.seconds)}
-                      </div>
-                    )}
+                    {blog.createdAt && <div className="text-xs text-gray-500">{formatDate(blog.createdAt.seconds)}</div>}
                   </div>
 
                   {/* Read More Button */}
@@ -569,12 +487,7 @@ export default function HomePage() {
 
         {/* View All Blogs Button */}
         {blogs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="text-center mt-8 sm:mt-12"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="text-center mt-8 sm:mt-12">
             <Link
               href="/blog"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-5 sm:px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all hover:scale-105 text-sm sm:text-base"
@@ -588,19 +501,9 @@ export default function HomePage() {
 
       {/* FEATURES SECTION RESPONSIF */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="text-center mb-8 sm:mb-12"
-        >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
-            🚀 Mengapa Bergabung?
-          </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">
-            Platform ini dirancang khusus untuk mendukung perkembangan mahasiswa
-            Teknik Informatika
-          </p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">🚀 Mengapa Bergabung?</h2>
+          <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">Platform ini dirancang khusus untuk mendukung perkembangan mahasiswa Teknik Informatika</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
@@ -608,20 +511,17 @@ export default function HomePage() {
             {
               icon: "💡",
               title: "Bagikan Pengetahuan",
-              description:
-                "Bagikan pengalaman, tutorial, dan insight teknologi terbaru dengan komunitas",
+              description: "Bagikan pengalaman, tutorial, dan insight teknologi terbaru dengan komunitas",
             },
             {
               icon: "👥",
               title: "Bangun Jaringan",
-              description:
-                "Terhubung dengan mahasiswa TI dari berbagai angkatan dan latar belakang",
+              description: "Terhubung dengan mahasiswa TI dari berbagai angkatan dan latar belakang",
             },
             {
               icon: "🚀",
               title: "Tingkatkan Skill",
-              description:
-                "Dapatkan feedback dan inspirasi untuk mengembangkan kemampuan teknis Anda",
+              description: "Dapatkan feedback dan inspirasi untuk mengembangkan kemampuan teknis Anda",
             },
           ].map((feature, index) => (
             <motion.div
@@ -631,15 +531,9 @@ export default function HomePage() {
               transition={{ delay: 0.7 + index * 0.1 }}
               className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center hover:bg-white/10 transition-all"
             >
-              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
-                {feature.icon}
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
-                {feature.description}
-              </p>
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">{feature.icon}</div>
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-3">{feature.title}</h3>
+              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">{feature.description}</p>
             </motion.div>
           ))}
         </div>
@@ -652,56 +546,51 @@ export default function HomePage() {
             {/* Brand */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center">
-                  <span className="font-bold text-white text-sm sm:text-lg">
-                    TI
-                  </span>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center">
+                  <Image
+                    src={`/LogoHMPTI.png`}
+                    alt="Logo Riset TI"
+                    className="w-full h-full object-cover"
+                    width={80}
+                    height={80}
+                    // tessss
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />{" "}
                 </div>
                 <span className="text-lg sm:text-xl font-bold">GAMASTI</span>
               </div>
               <p className="text-gray-400 mb-4 sm:mb-6 max-w-md text-sm sm:text-base">
-                Platform kolaborasi dan berbagi pengetahuan untuk mahasiswa
-                Teknik Informatika. Tempat untuk menunjukkan karya, berbagi
-                ilmu, dan menginspirasi sesama.
+                Platform kolaborasi dan berbagi pengetahuan untuk mahasiswa Teknik Informatika. Tempat untuk menunjukkan karya, berbagi ilmu, dan menginspirasi sesama.
               </p>
             </div>
 
             {/* Quick Links */}
             <div>
-              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">
-                Navigasi
-              </h4>
+              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Navigasi</h4>
               <ul className="space-y-2 sm:space-y-3">
                 <li>
-                  <Link
-                    href="/"
-                    className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base"
-                  >
+                  <Link href="/" className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base">
                     Beranda
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/blog"
-                    className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base"
-                  >
+                  <Link href="/blog" className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base">
                     Semua Blog
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/dashboard"
-                    className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base"
-                  >
+                  <Link href="/dashboard" className="text-gray-400 hover:text-blue-400 transition-colors text-sm sm:text-base">
                     Tulis Blog
                   </Link>
                 </li>
                 {user && isAdmin && (
                   <li>
-                    <Link
-                      href="/admin"
-                      className="text-purple-400 hover:text-purple-300 transition-colors text-sm sm:text-base"
-                    >
+                    <Link href="/admin" className="text-purple-400 hover:text-purple-300 transition-colors text-sm sm:text-base">
                       Admin Dashboard
                     </Link>
                   </li>
@@ -711,9 +600,7 @@ export default function HomePage() {
 
             {/* Stats */}
             <div>
-              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">
-                Statistik
-              </h4>
+              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Statistik</h4>
               <ul className="space-y-2 sm:space-y-3 text-gray-400 text-sm sm:text-base">
                 <li className="flex items-center gap-2">
                   <FiBook className="text-blue-400 text-sm" />
@@ -721,7 +608,7 @@ export default function HomePage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <FiEye className="text-green-400 text-sm" />
-                  <span>1K+ Pengunjung</span>
+                  <span>{visitorCount > 0 ? `${visitorCount.toLocaleString("id-ID")} Pengunjung` : "Memuat..."}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <FiCalendar className="text-purple-400 text-sm" />
@@ -741,5 +628,5 @@ export default function HomePage() {
 }
 
 // Tambahkan komponen AnimatePresence jika belum di-import
-import { AnimatePresence } from "framer-motion";import Image from "next/image";
-
+import { AnimatePresence } from "framer-motion";
+import Image from "next/image";
