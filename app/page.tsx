@@ -137,7 +137,7 @@ export default function HomePage() {
               {/* Ganti dengan logo riset Anda */}
               // Ganti path logo dengan absolute path
               <img
-                src={`${process.env.NEXT_PUBLIC_BASE_URL || ""}/logo_riset.png`}
+                src={`${process.env.NEXT_PUBLIC_BASE_URL || ""}/logoHMPTI.png`}
                 alt="Logo Riset TI"
                 className="w-full h-full object-cover"
                 onError={(e) => {
