@@ -11,6 +11,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "Galeri Mahasiswa TI",
   description: "Tempat berbagi karya mahasiswa Teknik Informatika",
+  icons: {
+    icon: "/LogoHMPTI.png", // Simple version
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
