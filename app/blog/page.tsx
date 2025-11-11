@@ -19,7 +19,7 @@ import {
   FiPlus,
   FiEye,
   FiYoutube,
-  FiImage
+  FiImage,
 } from "react-icons/fi";
 
 // Interface Blog
@@ -75,8 +75,8 @@ export default function BlogPage() {
           };
         }) as Blog[];
 
-        const publishedBlogs = blogsData.filter(blog => 
-          blog.status === 'published' || !blog.status
+        const publishedBlogs = blogsData.filter(
+          (blog) => blog.status === "published" || !blog.status
         );
 
         setBlogs(publishedBlogs);
@@ -84,22 +84,22 @@ export default function BlogPage() {
       } catch (error) {
         console.error("Error fetching blogs:", error);
         setError("Gagal memuat blog. Silakan refresh halaman.");
-        
+
         try {
           const snapshot = await getDocs(collection(db, "blogs"));
           const allBlogs = snapshot.docs.map((doc) => ({
             id: doc.id,
-            ...doc.data()
+            ...doc.data(),
           })) as Blog[];
-          
-          const publishedBlogs = allBlogs.filter(blog => 
-            blog.status === 'published' || !blog.status
-          ).sort((a, b) => {
-            const dateA = a.createdAt?.seconds || 0;
-            const dateB = b.createdAt?.seconds || 0;
-            return dateB - dateA;
-          });
-          
+
+          const publishedBlogs = allBlogs
+            .filter((blog) => blog.status === "published" || !blog.status)
+            .sort((a, b) => {
+              const dateA = a.createdAt?.seconds || 0;
+              const dateB = b.createdAt?.seconds || 0;
+              return dateB - dateA;
+            });
+
           setBlogs(publishedBlogs);
           setFilteredBlogs(publishedBlogs);
         } catch (fallbackError) {
@@ -146,7 +146,9 @@ export default function BlogPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
             Terjadi Kesalahan
           </h1>
-          <p className="text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">{error}</p>
+          <p className="text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">
+            {error}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all shadow-lg text-sm sm:text-base"
@@ -174,14 +176,15 @@ export default function BlogPage() {
             </span>
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed px-2">
-            Jelajahi dunia pengetahuan dan inspirasi dari mahasiswa Teknik Informatika. 
+            Jelajahi dunia pengetahuan dan inspirasi dari mahasiswa Teknik
+            Informatika.
             <span className="block text-cyan-400 font-medium mt-1 sm:mt-2 text-sm sm:text-base">
               Temukan, Pelajari, dan Berbagi!
             </span>
           </p>
-          
+
           {/* Quick Actions - Responsif */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -194,7 +197,7 @@ export default function BlogPage() {
               <FiHome className="text-base sm:text-lg group-hover:text-cyan-400 transition-colors" />
               <span>Beranda</span>
             </Link>
-            
+
             {!userLoading && user && (
               <Link
                 href="/dashboard"
@@ -238,7 +241,7 @@ export default function BlogPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto justify-between lg:justify-normal">
                 <div className="flex items-center gap-2 sm:gap-3 bg-black/30 px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-cyan-500/20">
                   <FiFilter className="text-cyan-400 text-base sm:text-lg" />
@@ -246,7 +249,7 @@ export default function BlogPage() {
                     {filteredBlogs.length} Blog
                   </span>
                 </div>
-                
+
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
@@ -345,39 +348,44 @@ export default function BlogPage() {
                 key={blog.id}
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
+                transition={{
                   delay: i * 0.1,
                   type: "spring",
-                  stiffness: 100 
+                  stiffness: 100,
                 }}
-                whileHover={{ 
+                whileHover={{
                   y: -4,
                   scale: 1.02,
-                  transition: { duration: 0.2 }
+                  transition: { duration: 0.2 },
                 }}
                 className="group bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-lg border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl hover:shadow-cyan-500/15 transition-all duration-300 relative"
               >
                 {/* Glow Effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
+
                 {/* Image - Responsif */}
                 {blog.images && blog.images.length > 0 ? (
-                  <Link href={`/blog/${blog.id}`} className="block relative h-32 sm:h-40 overflow-hidden">
+                  <Link
+                    href={`/blog/${blog.id}`}
+                    className="block relative h-32 sm:h-40 overflow-hidden"
+                  >
                     <img
                       src={blog.images[0]}
                       alt={blog.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    
+
                     {/* YouTube Badge */}
                     {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
                       <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 backdrop-blur-sm">
                         <FiYoutube className="text-xs" />
-                        <span className="text-xs">{blog.youtubeUrls.length}</span>
+                        <span className="text-xs">
+                          {blog.youtubeUrls.length}
+                        </span>
                       </div>
                     )}
-                    
+
                     <div className="absolute top-2 right-2">
                       <span className="bg-cyan-500/90 text-white px-1.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
                         <FiEye className="inline mr-1 text-xs" />
@@ -386,16 +394,21 @@ export default function BlogPage() {
                     </div>
                   </Link>
                 ) : (
-                  <Link href={`/blog/${blog.id}`} className="block h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+                  <Link
+                    href={`/blog/${blog.id}`}
+                    className="block h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden"
+                  >
                     <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300"></div>
-                    
+
                     {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
                       <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20 backdrop-blur-sm">
                         <FiYoutube className="text-xs" />
-                        <span className="text-xs">{blog.youtubeUrls.length}</span>
+                        <span className="text-xs">
+                          {blog.youtubeUrls.length}
+                        </span>
                       </div>
                     )}
-                    
+
                     <div className="text-center z-10">
                       <FiBook className="text-xl sm:text-2xl text-cyan-400 mx-auto mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-300" />
                       <p className="text-cyan-300 text-xs font-medium italic">
@@ -412,7 +425,7 @@ export default function BlogPage() {
                       {blog.title}
                     </h3>
                   </Link>
-                  
+
                   <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 leading-relaxed">
                     {blog.content}
                   </p>
@@ -437,12 +450,16 @@ export default function BlogPage() {
                             className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-xs"
                           >
                             <FiGithub className="text-xs" />
-                            <span className="text-xs hidden xs:inline">GitHub</span>
+                            <span className="text-xs hidden xs:inline">
+                              GitHub
+                            </span>
                           </a>
                         ) : (
                           <div className="flex items-center gap-1 text-gray-500 text-xs">
                             <FiUser className="text-xs" />
-                            <span className="text-xs hidden xs:inline">Anonim</span>
+                            <span className="text-xs hidden xs:inline">
+                              Anonim
+                            </span>
                           </div>
                         )}
                       </div>
@@ -451,9 +468,16 @@ export default function BlogPage() {
                     {blog.createdAt && (
                       <div className="flex items-center gap-1 text-cyan-400 text-xs bg-cyan-500/10 px-2 py-1 rounded-full border border-cyan-500/20">
                         <FiCalendar className="text-xs" />
-                        <span className="text-xs hidden xs:inline">{formatDate(blog.createdAt.seconds)}</span>
+                        <span className="text-xs hidden xs:inline">
+                          {formatDate(blog.createdAt.seconds)}
+                        </span>
                         <span className="text-xs xs:hidden">
-                          {new Date(blog.createdAt.seconds * 1000).toLocaleDateString('id-ID', { day: 'numeric', month: 'numeric' })}
+                          {new Date(
+                            blog.createdAt.seconds * 1000
+                          ).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "numeric",
+                          })}
                         </span>
                       </div>
                     )}
@@ -483,7 +507,6 @@ export default function BlogPage() {
                           blogId={blog.id}
                           authorId={blog.authorId}
                           blogTitle={blog.title}
-                          size="sm"
                         />
                       </div>
                     )}
