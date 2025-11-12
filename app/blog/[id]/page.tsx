@@ -30,6 +30,8 @@ import {
   FiArrowDown,
   FiCode,
   FiEye,
+  FiDownload,
+  FiVideo,
 } from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 import YouTubeEmbed from "@/components/YoutubeEmbed";
@@ -52,13 +54,15 @@ interface Blog {
 }
 
 // Interface untuk Content Blocks
-type ContentBlockType = "subtitle" | "text" | "image" | "youtube" | "code";
+type ContentBlockType = "subtitle" | "text" | "image" | "youtube" | "code" | "file" | "video";
 
 interface ContentBlock {
   id: string;
   type: ContentBlockType;
   content: string;
   language?: string;
+  fileUrl?: string;
+  fileName?: string;
 }
 
 interface ContentBlock {
@@ -91,6 +95,9 @@ export default function BlogDetail() {
   const [editImages, setEditImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+
+  // State untuk modal content block
+  const [showBlockModal, setShowBlockModal] = useState(false);
 
   // Helper function to get GitHub URL
   const getGitHubUrl = (githubUrl?: string): string => {
@@ -867,6 +874,16 @@ export default function BlogDetail() {
                             <FiCode /> Kode
                           </>
                         )}
+                        {block.type === "file" && (
+                          <>
+                            <FiDownload /> File Download
+                          </>
+                        )}
+                        {block.type === "video" && (
+                          <>
+                            <FiVideo /> Video Google Drive
+                          </>
+                        )}
                         <span className="text-gray-600">#{index + 1}</span>
                       </div>
 
@@ -1000,34 +1017,84 @@ export default function BlogDetail() {
                         />
                       </div>
                     )}
+
+                    {block.type === "file" && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Nama File</label>
+                          <input
+                            type="text"
+                            value={block.fileName || ""}
+                            onChange={(e) => {
+                              const newBlocks = editContentBlocks.map((b) => (b.id === block.id ? { ...b, fileName: e.target.value } : b));
+                              setEditContentBlocks(newBlocks);
+                            }}
+                            placeholder="Contoh: Document.pdf"
+                            className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-cyan-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">URL File atau Upload (Max 10MB)</label>
+                          <input
+                            type="text"
+                            value={block.fileUrl || block.content || ""}
+                            onChange={(e) => {
+                              const newBlocks = editContentBlocks.map((b) => (b.id === block.id ? { ...b, fileUrl: e.target.value, content: e.target.value } : b));
+                              setEditContentBlocks(newBlocks);
+                            }}
+                            placeholder="https://..."
+                            className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-cyan-500 outline-none"
+                          />
+                        </div>
+                        {(block.fileUrl || block.content) && (
+                          <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                            <div className="flex items-center gap-2 text-sm text-cyan-400">
+                              <FiDownload />
+                              <span>File siap didownload: {block.fileName || "File"}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {block.type === "video" && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">URL Google Drive Video</label>
+                          <input
+                            type="url"
+                            value={block.content}
+                            onChange={(e) => updateContentBlock(block.id, e.target.value)}
+                            placeholder="https://drive.google.com/file/d/..."
+                            className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 outline-none"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Paste link Google Drive video Anda</p>
+                        </div>
+                        {block.content && block.content.includes("drive.google.com") && (
+                          <div className="p-3 bg-pink-500/10 border border-pink-500/30 rounded-lg">
+                            <div className="flex items-center gap-2 text-sm text-pink-400">
+                              <FiVideo />
+                              <span>URL Google Drive valid ✓</span>
+                            </div>
+                          </div>
+                        )}
+                        {block.content && !block.content.includes("drive.google.com") && <div className="text-xs text-red-400">URL harus dari Google Drive</div>}
+                      </div>
+                    )}
                   </div>
                 ))}
 
                 {editContentBlocks.length === 0 && <div className="text-center py-8 text-gray-500 border-2 border-dashed border-white/10 rounded-xl">Belum ada konten. Tambahkan block di bawah.</div>}
 
-                {/* Add Block Buttons */}
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => addContentBlock("subtitle")} className="flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 px-4 py-2 rounded-lg transition-colors">
-                    <FiType />
-                    Tambah Sub Judul
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("text")} className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 px-4 py-2 rounded-lg transition-colors">
-                    <FiFileText />
-                    Tambah Konten
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("youtube")} className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
-                    <FiYoutube />
-                    Tambah Video
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("image")} className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 px-4 py-2 rounded-lg transition-colors">
-                    <FiImage />
-                    Tambah Gambar
-                  </button>
-                  <button type="button" onClick={() => addContentBlock("code")} className="flex items-center gap-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 px-4 py-2 rounded-lg transition-colors">
-                    <FiCode />
-                    Tambah Kode
-                  </button>
-                </div>
+                {/* Add Block Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowBlockModal(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-3 rounded-xl font-medium transition-all shadow-lg"
+                >
+                  <FiPlus className="text-lg" />
+                  <span>Tambah Konten Blog</span>
+                </button>
               </motion.section>
             ) : (
               /* Display Content Blocks */
@@ -1072,6 +1139,53 @@ export default function BlogDetail() {
                             <pre className="p-4 overflow-x-auto">
                               <code className="text-sm font-mono text-gray-300">{block.content}</code>
                             </pre>
+                          </div>
+                        </div>
+                      )}
+
+                      {block.type === "file" && (block.content || block.fileUrl) && (
+                        <div className="my-6">
+                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6 hover:bg-blue-500/20 transition-all">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center shrink-0">
+                                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-lg font-semibold text-white mb-1">{block.fileName || block.content || "Download File"}</p>
+                                <p className="text-sm text-gray-400">Klik tombol untuk download</p>
+                              </div>
+                              <a
+                                href={block.fileUrl || block.content}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download
+                                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-medium transition-all shrink-0"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {block.type === "video" && block.content && (
+                        <div className="my-6">
+                          <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl overflow-hidden">
+                            <div className="bg-pink-500/10 px-4 py-2 border-b border-pink-500/30 flex items-center gap-2">
+                              <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-sm text-pink-400 font-medium">Video Google Drive</span>
+                            </div>
+                            <div className="aspect-video bg-black">
+                              <iframe src={block.content.includes("drive.google.com") ? block.content.replace("/view", "/preview") : block.content} className="w-full h-full" allow="autoplay" allowFullScreen></iframe>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1200,6 +1314,152 @@ export default function BlogDetail() {
               <button onClick={() => setSelectedImage(null)} className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors">
                 <FiX className="text-xl" />
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Tambah Konten Blog */}
+      <AnimatePresence>
+        {showBlockModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4" onClick={() => setShowBlockModal(false)}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Tambah Konten Blog</h3>
+                  <p className="text-sm text-gray-400 mt-1">Pilih tipe konten yang ingin ditambahkan</p>
+                </div>
+                <button onClick={() => setShowBlockModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                  <FiX className="text-xl text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("subtitle");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiType className="text-blue-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Subjudul</p>
+                    <p className="text-xs text-gray-400">Tambah heading section</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("text");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiFileText className="text-green-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Teks</p>
+                    <p className="text-xs text-gray-400">Paragraf konten</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("youtube");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiYoutube className="text-red-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">YouTube</p>
+                    <p className="text-xs text-gray-400">Embed video YouTube</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("image");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiImage className="text-purple-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Gambar</p>
+                    <p className="text-xs text-gray-400">Upload gambar (Max 5MB)</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("code");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiCode className="text-orange-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Kode</p>
+                    <p className="text-xs text-gray-400">Code snippet dengan syntax</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("file");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiDownload className="text-cyan-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">File Download</p>
+                    <p className="text-xs text-gray-400">Link download file (Max 10MB)</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addContentBlock("video");
+                    setShowBlockModal(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center shrink-0">
+                    <FiVideo className="text-pink-400 text-lg" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Video Google Drive</p>
+                    <p className="text-xs text-gray-400">Embed video dari Google Drive</p>
+                  </div>
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
