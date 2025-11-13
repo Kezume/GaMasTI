@@ -1077,6 +1077,7 @@ export default function BlogDetail() {
                               <span>URL Google Drive valid ✓</span>
                             </div>
                           </div>
+                          // gegege
                         )}
                         {block.content && !block.content.includes("drive.google.com") && <div className="text-xs text-red-400">URL harus dari Google Drive</div>}
                       </div>
