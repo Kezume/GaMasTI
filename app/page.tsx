@@ -167,27 +167,37 @@ export default function HomePage() {
       <header className="fixed top-0 left-0 w-full z-50 bg-black/95 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group flex-shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-              {/* Ganti dengan logo riset Anda */}
-              {/* // Ganti path logo dengan absolute path */}
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
+            {/* Logo HMPTI */}
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5">
               <Image
-                src={`/LogoHMPTI.png`}
-                alt="Logo Riset TI"
-                className="w-full h-full object-cover"
-                width={80}
-                height={80}
-                // tessss
+                src="/LogoHMPTI.png"
+                alt="Logo HMPTI"
+                className="w-full h-full object-contain"
+                width={40}
+                height={40}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = "none";
-                  const fallback = target.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = "flex";
                 }}
               />
-              {/* Fallback text jika logo tidak ada */}
-              <span className="font-bold text-white text-sm sm:text-lg hidden">TI</span>
             </div>
+
+            {/* Logo UDB */}
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5">
+              <Image
+                src="/logoudb.png"
+                alt="Logo UDB"
+                className="w-full h-full object-contain"
+                width={40}
+                height={40}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = "none";
+                }}
+              />
+            </div>
+
             <div className="hidden sm:block">
               <h1 className="text-lg sm:text-xl font-bold tracking-tight group-hover:text-blue-400 transition-colors">GAMASTI</h1>
               <p className="text-xs text-gray-400">By HMPTI</p>
@@ -301,7 +311,7 @@ export default function HomePage() {
           </h1>
 
           <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-4">
-            Mahasiswa Teknik Informatika Universitas Duta Bangsa Bersatu dalam semangat riset, kolaborasi, dan inovasi untuk kemajuan teknologi informasi.
+            Mahasiswa Teknik Informatika Universitas Duta Bangsa Surakarta bersatu dalam semangat riset, kolaborasi, dan inovasi untuk kemajuan teknologi informasi.
           </motion.p>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.8 }} className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 px-4">
@@ -344,7 +354,7 @@ export default function HomePage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4">
           <div className="flex-1">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">✨ Karya Terbaru</h2>
-            <p className="text-gray-400 text-sm sm:text-base">3 blog terbaru dari mahasiswa Teknik Informatika</p>
+            <p className="text-gray-400 text-sm sm:text-base">{featuredBlogs.length > 0 ? `${featuredBlogs.length} blog terbaru dari mahasiswa Teknik Informatika` : "Belum ada blog yang dipublikasikan"}</p>
           </div>
 
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
@@ -554,23 +564,37 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8">
             {/* Brand */}
             <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                {/* Logo HMPTI */}
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5">
                   <Image
-                    src={`/LogoHMPTI.png`}
-                    alt="Logo Riset TI"
-                    className="w-full h-full object-cover"
-                    width={80}
-                    height={80}
-                    // tessss
+                    src="/LogoHMPTI.png"
+                    alt="Logo HMPTI"
+                    className="w-full h-full object-contain"
+                    width={40}
+                    height={40}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = "none";
-                      const fallback = target.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = "flex";
                     }}
-                  />{" "}
+                  />
                 </div>
+
+                {/* Logo UDB */}
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white/5">
+                  <Image
+                    src="/logoudb.png"
+                    alt="Logo UDB"
+                    className="w-full h-full object-contain"
+                    width={40}
+                    height={40}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
+                  />
+                </div>
+
                 <span className="text-lg sm:text-xl font-bold">GAMASTI</span>
               </div>
               <p className="text-gray-400 mb-4 sm:mb-6 max-w-md text-sm sm:text-base">

@@ -211,8 +211,8 @@ export default function DashboardPage() {
   };
 
   const uploadBlockImage = async (id: string, file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 5MB");
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 1MB");
       return;
     }
 
@@ -539,16 +539,16 @@ export default function DashboardPage() {
               </div>
 
               {/* Template Selector */}
-              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3">
                   <div className="flex items-center gap-2">
-                    <FiLayout className="text-blue-400 text-lg" />
-                    <span className="text-sm font-medium text-blue-300">Template Formasi (Opsional)</span>
+                    <FiLayout className="text-blue-400 text-base sm:text-lg" />
+                    <span className="text-xs sm:text-sm font-medium text-blue-300">Template Formasi (Opsional)</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowTemplates(!showTemplates)}
-                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-all text-blue-300 hover:text-blue-200"
+                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-all text-blue-300 hover:text-blue-200 w-full sm:w-auto"
                   >
                     {showTemplates ? "Tutup" : "Pilih Template"}
                   </button>
@@ -557,7 +557,7 @@ export default function DashboardPage() {
                 <AnimatePresence>
                   {showTemplates && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }} className="overflow-hidden">
-                      <div className="grid grid-cols-1 gap-2 mt-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 mt-3">
                         {blogTemplates.map((template) => (
                           <motion.button
                             key={template.name}
@@ -565,12 +565,12 @@ export default function DashboardPage() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => handleTemplateSelect(template)}
-                            className="flex items-start gap-3 p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 rounded-lg transition-all text-left group"
+                            className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 rounded-lg transition-all text-left group"
                           >
-                            <span className="text-2xl flex-shrink-0">{template.icon}</span>
+                            <span className="text-xl sm:text-2xl shrink-0">{template.icon}</span>
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors">{template.name}</h4>
-                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{template.description}</p>
+                              <h4 className="text-xs sm:text-sm font-semibold text-white group-hover:text-purple-300 transition-colors">{template.name}</h4>
+                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 sm:line-clamp-1">{template.description}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-xs text-purple-400">{template.blocks.length > 0 ? `${template.blocks.length} blocks` : "Blank canvas"}</span>
                               </div>
@@ -583,8 +583,8 @@ export default function DashboardPage() {
                 </AnimatePresence>
 
                 <div className="flex items-start gap-2 mt-3 text-xs text-gray-400">
-                  <span className="flex-shrink-0">💡</span>
-                  <p>Template membantu Anda memulai dengan struktur konten yang sudah siap pakai. Pilih salah satu atau mulai dari blank canvas.</p>
+                  <span className="shrink-0">💡</span>
+                  <p className="leading-relaxed">Template membantu Anda memulai dengan struktur konten yang sudah siap pakai. Pilih salah satu atau mulai dari blank canvas.</p>
                 </div>
               </div>
 
@@ -691,8 +691,8 @@ export default function DashboardPage() {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      if (file.size > 5 * 1024 * 1024) {
-                                        toast.error("File melebihi ukuran maksimal 5MB");
+                                      if (file.size > 1 * 1024 * 1024) {
+                                        toast.error("File melebihi ukuran maksimal 1MB");
                                         return;
                                       }
                                       uploadBlockImage(block.id, file);
@@ -713,8 +713,8 @@ export default function DashboardPage() {
                                       onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
-                                          if (file.size > 5 * 1024 * 1024) {
-                                            toast.error("File melebihi ukuran maksimal 5MB");
+                                          if (file.size > 1 * 1024 * 1024) {
+                                            toast.error("File melebihi ukuran maksimal 1MB");
                                             return;
                                           }
                                           uploadBlockImage(block.id, file);
@@ -933,62 +933,67 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* PREVIEW */}
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl h-fit sticky top-8 ">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <FiEye className="text-2xl text-green-400" />
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl h-fit lg:sticky lg:top-8 "
+          >
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div className="p-1.5 sm:p-2 bg-green-500/20 rounded-lg">
+                <FiEye className="text-xl sm:text-2xl text-green-400" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Preview Blog</h2>
-                <p className="text-gray-400 text-sm">Tampilan blog Anda</p>
+                <h2 className="text-lg sm:text-xl font-semibold">Preview Blog</h2>
+                <p className="text-gray-400 text-xs sm:text-sm">Tampilan blog Anda</p>
               </div>
             </div>
 
             {title || contentBlocks.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                 {/* TITLE SECTION */}
                 {title && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/20 rounded-xl border border-white/5 p-6">
-                    <div className="flex items-center gap-2 text-xs text-blue-400 mb-3">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/20 rounded-lg sm:rounded-xl border border-white/5 p-3 sm:p-4 lg:p-6">
+                    <div className="flex items-center gap-2 text-xs text-blue-400 mb-2 sm:mb-3">
                       <FiType className="text-sm" />
                       <span className="font-medium">Judul</span>
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-3 leading-tight">{title}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <img src={user.photoURL || "/default-avatar.png"} alt="Author" className="w-6 h-6 rounded-full" />
-                      <span className="truncate">{user.displayName || "Anonim"}</span>
-                      <span>•</span>
-                      <span>{new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+                    <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 leading-tight">{title}</h3>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400 flex-wrap">
+                      <img src={user.photoURL || "/default-avatar.png"} alt="Author" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" />
+                      <span className="truncate max-w-[120px] sm:max-w-none">{user.displayName || "Anonim"}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="text-xs hidden sm:inline">{new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
                     </div>
                   </motion.div>
                 )}
 
                 {/* CONTENT BLOCKS */}
                 {contentBlocks.map((block, index) => (
-                  <motion.div key={block.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * (index + 1) }} className="bg-black/20 rounded-xl border border-white/5 p-6">
+                  <motion.div key={block.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * (index + 1) }} className="bg-black/20 rounded-lg sm:rounded-xl border border-white/5 p-3 sm:p-4 lg:p-6">
                     {block.type === "subtitle" && block.content && (
                       <>
-                        <div className="flex items-center gap-2 text-xs text-blue-400 mb-3">
+                        <div className="flex items-center gap-2 text-xs text-blue-400 mb-2 sm:mb-3">
                           <FiType className="text-sm" />
                           <span className="font-medium">Subjudul</span>
                         </div>
-                        <h4 className="text-xl font-semibold text-white">{block.content}</h4>
+                        <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-white">{block.content}</h4>
                       </>
                     )}
 
                     {block.type === "text" && block.content && (
                       <>
-                        <div className="flex items-center gap-2 text-xs text-green-400 mb-3">
+                        <div className="flex items-center gap-2 text-xs text-green-400 mb-2 sm:mb-3">
                           <FiFileText className="text-sm" />
                           <span className="font-medium">Konten</span>
                         </div>
-                        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{block.content}</p>
+                        <p className="text-xs sm:text-sm text-gray-300 leading-relaxed whitespace-pre-line">{block.content}</p>
                       </>
                     )}
 
                     {block.type === "youtube" && block.content && isValidYouTubeUrl(block.content) && (
                       <>
-                        <div className="flex items-center gap-2 text-xs text-red-400 mb-4">
+                        <div className="flex items-center gap-2 text-xs text-red-400 mb-2 sm:mb-3 lg:mb-4">
                           <FiYoutube className="text-sm" />
                           <span className="font-medium">Video YouTube</span>
                         </div>
@@ -1000,7 +1005,7 @@ export default function DashboardPage() {
 
                     {block.type === "image" && block.content && (
                       <>
-                        <div className="flex items-center gap-2 text-xs text-purple-400 mb-4">
+                        <div className="flex items-center gap-2 text-xs text-purple-400 mb-2 sm:mb-3 lg:mb-4">
                           <FiImage className="text-sm" />
                           <span className="font-medium">Gambar</span>
                         </div>
@@ -1012,13 +1017,13 @@ export default function DashboardPage() {
 
                     {block.type === "code" && block.content && (
                       <>
-                        <div className="flex items-center gap-2 text-xs text-orange-400 mb-4">
+                        <div className="flex items-center gap-2 text-xs text-orange-400 mb-2 sm:mb-3 lg:mb-4">
                           <FiCode className="text-sm" />
                           <span className="font-medium">Kode ({block.language || "javascript"})</span>
                         </div>
                         <div className="rounded-lg overflow-hidden bg-black/40 border border-gray-700">
-                          <pre className="p-4 overflow-x-auto">
-                            <code className="text-sm font-mono text-gray-300">{block.content}</code>
+                          <pre className="p-2 sm:p-3 lg:p-4 overflow-x-auto">
+                            <code className="text-xs sm:text-sm font-mono text-gray-300">{block.content}</code>
                           </pre>
                         </div>
                       </>
@@ -1027,12 +1032,12 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FiFileText className="text-2xl text-gray-400" />
+              <div className="text-center py-8 sm:py-12 lg:py-16">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <FiFileText className="text-xl sm:text-2xl text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-300 mb-2">Preview Belum Tersedia</h3>
-                <p className="text-gray-500 text-sm max-w-xs mx-auto">Mulai menulis di form sebelah kiri untuk melihat preview blog di sini</p>
+                <h3 className="text-base sm:text-lg font-medium text-gray-300 mb-2">Preview Belum Tersedia</h3>
+                <p className="text-gray-500 text-xs sm:text-sm max-w-xs mx-auto px-4">Mulai menulis di form sebelah kiri untuk melihat preview blog di sini</p>
               </div>
             )}
           </motion.div>
@@ -1193,7 +1198,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-medium text-white">Gambar</p>
-                    <p className="text-xs text-gray-400">Upload gambar (Max 5MB)</p>
+                    <p className="text-xs text-gray-400">Upload gambar (Max 1MB)</p>
                   </div>
                 </button>
 

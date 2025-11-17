@@ -279,9 +279,9 @@ export default function BlogDetail() {
       return;
     }
 
-    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    const oversizedFiles = files.filter((file) => file.size > 1 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
-      toast.error("Beberapa file melebihi ukuran maksimal 5MB");
+      toast.error("Beberapa file melebihi ukuran maksimal 1MB");
       return;
     }
 
@@ -354,8 +354,8 @@ export default function BlogDetail() {
   };
 
   const uploadBlockImage = async (id: string, file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 5MB");
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 1MB");
       return;
     }
 
@@ -619,14 +619,18 @@ export default function BlogDetail() {
               )}
 
               {/* Delete Button - hanya untuk pemilik atau admin */}
-              {isOwner && blog.authorId && <DeleteBlogButton blogId={id as string} authorId={blog.authorId} authorEmail={blog.authorEmail} blogTitle={blog.title} onDelete={handleBlogDelete} />}
+              {isOwner && blog.authorId && (
+                <div className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 px-4 py-2 rounded-xl transition-all">
+                  <DeleteBlogButton blogId={id as string} authorId={blog.authorId} authorEmail={blog.authorEmail} blogTitle={blog.title} onDelete={handleBlogDelete} />
+                </div>
+              )}
 
               {/* Admin Badge */}
               {isAdmin && (
-                <div className="flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-400 px-3 py-2 rounded-xl">
+                <Link href="/admin" className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-2 rounded-xl transition-all cursor-pointer">
                   <FiSettings className="text-sm" />
                   <span className="text-sm">Admin</span>
-                </div>
+                </Link>
               )}
 
               <button onClick={shareBlog} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl transition-all">
@@ -962,7 +966,7 @@ export default function BlogDetail() {
                           <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-lg p-6 cursor-pointer hover:border-purple-500/50 transition-colors">
                             <FiImage className="text-3xl text-gray-400 mb-2" />
                             <span className="text-sm text-gray-400">Klik untuk upload gambar</span>
-                            <span className="text-xs text-gray-500 mt-1">Maksimal 5MB</span>
+                            <span className="text-xs text-gray-500 mt-1">Maksimal 1MB</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -1225,7 +1229,7 @@ export default function BlogDetail() {
                       <span>Tambah Gambar Baru</span>
                       <input type="file" accept="image/*" multiple onChange={handleAddImages} className="hidden" />
                     </label>
-                    <p className="text-xs text-gray-400 mt-2">Maksimal 5MB per gambar. Total: {editImages.length + newImageFiles.length}/6</p>
+                    <p className="text-xs text-gray-400 mt-2">Maksimal 1MB per gambar. Total: {editImages.length + newImageFiles.length}/6</p>
                   </div>
                 )}
 
@@ -1405,7 +1409,7 @@ export default function BlogDetail() {
                   </div>
                   <div>
                     <p className="font-medium text-white">Gambar</p>
-                    <p className="text-xs text-gray-400">Upload gambar (Max 5MB)</p>
+                    <p className="text-xs text-gray-400">Upload gambar (Max 1MB)</p>
                   </div>
                 </button>
 

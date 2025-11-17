@@ -70,8 +70,8 @@ export default function BlogForm() {
   };
 
   const handleImageUpload = async (id: string, file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 5MB");
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 1MB");
       return;
     }
 
@@ -308,7 +308,7 @@ export default function BlogForm() {
                   <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-lg p-6 cursor-pointer hover:border-purple-500/50 transition-colors">
                     <FiImage className="text-3xl text-gray-400 mb-2" />
                     <span className="text-sm text-gray-400">Klik untuk upload gambar</span>
-                    <span className="text-xs text-gray-500 mt-1">Maksimal 5MB</span>
+                    <span className="text-xs text-gray-500 mt-1">Maksimal 1MB</span>
                     <input
                       type="file"
                       accept="image/*"
