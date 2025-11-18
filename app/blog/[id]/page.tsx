@@ -1019,6 +1019,7 @@ export default function BlogDetail() {
                           className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-orange-500 outline-none resize-none font-mono text-sm"
                           spellCheck={false}
                         />
+                        {/* tes hehe */}
                       </div>
                     )}
 
