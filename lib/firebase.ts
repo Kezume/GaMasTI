@@ -5,14 +5,15 @@ import { getAuth, GithubAuthProvider, signInWithPopup, signOut } from "firebase/
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
+// Firebase configuration menggunakan environment variables untuk keamanan
 const firebaseConfig = {
-  apiKey: "AIzaSyAOxyuuoJ6cjRWaTK8_wR25quV4gy3dBVQ",
-  authDomain: "gamasti-39241.firebaseapp.com",
-  projectId: "gamasti-39241",
-  storageBucket: "gamasti-39241.firebasestorage.app",
-  messagingSenderId: "891109580101",
-  appId: "1:891109580101:web:e09e5b5db50502f4d1722c",
-  measurementId: "G-WX8X7B4GJG",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -30,16 +31,24 @@ provider.addScope("user:email");
 
 export const loginWithGitHub = async () => {
   try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    console.error("Login error:", error);
+    const result = await signInWithPopup(auth, provider);
+    return result;
+  } catch (error: any) {
+    // Jangan expose error details ke console di production
+    if (process.env.NODE_ENV === "development") {
+      console.error("Login error:", error);
+    }
+    throw new Error(error?.message || "Login failed");
   }
 };
 
 export const logout = async () => {
   try {
     await signOut(auth);
-  } catch (error) {
-    console.error("Logout error:", error);
+  } catch (error: any) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("Logout error:", error);
+    }
+    throw new Error(error?.message || "Logout failed");
   }
 };
