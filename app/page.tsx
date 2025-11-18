@@ -437,10 +437,10 @@ export default function HomePage() {
               >
                 {/* IMAGE */}
                 {(() => {
-                  const coverImage = blog.images?.[0] || getFirstImageFromBlocks(blog.contentBlocks);
+                  const coverImage = blog.images?.[0] || getFirstImageFromBlocks(blog.contentBlocks) || "/defaultblogcover.jpg";
                   const imageCount = blog.images?.length || blog.contentBlocks?.filter((b) => b.type === "image").length || 0;
 
-                  return coverImage ? (
+                  return (
                     <Link href={`/blog/${blog.id}`}>
                       <div className="relative h-32 sm:h-40 overflow-hidden">
                         <img src={coverImage} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -456,25 +456,6 @@ export default function HomePage() {
 
                         <div className="absolute top-2 right-2">
                           <div className="bg-black/60 backdrop-blur-sm text-white text-xs px-1.5 py-1 rounded-full border border-white/20">{imageCount} foto</div>
-                        </div>
-                      </div>
-                    </Link>
-                  ) : (
-                    <Link href={`/blog/${blog.id}`}>
-                      <div className="h-32 sm:h-40 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10"></div>
-
-                        {/* YouTube Badge */}
-                        {blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
-                          <div className="absolute top-2 left-2 bg-red-600 text-white px-1.5 py-1 rounded-full text-xs flex items-center gap-1 z-20">
-                            <FiYoutube className="text-xs" />
-                            <span className="text-xs">{blog.youtubeUrls.length}</span>
-                          </div>
-                        )}
-
-                        <div className="text-center z-10">
-                          <FiBook className="text-2xl sm:text-3xl text-gray-600 mx-auto mb-1" />
-                          <p className="text-gray-500 text-xs italic">Tidak ada gambar</p>
                         </div>
                       </div>
                     </Link>
