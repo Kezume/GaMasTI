@@ -298,55 +298,67 @@ export default function HomePage() {
       </header>
 
       {/* HERO SECTION RESPONSIF */}
-      <section className="relative flex flex-col items-center justify-center text-center mt-24 sm:mt-28 px-4 sm:px-6 overflow-hidden">
+      <section className="relative mt-24 sm:mt-28 px-4 sm:px-6 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -right-20 w-60 h-60 sm:w-80 sm:h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-20 -left-20 w-60 h-60 sm:w-80 sm:h-80 bg-cyan-500/10 rounded-full blur-3xl"></div>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10 w-full max-w-6xl mx-auto">
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold mb-4 sm:mb-6 px-2">
-            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">GAMASTI</span>
-          </h1>
+        <div className="relative z-10 w-full max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
+            {/* Left Side - Text Content */}
+            <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="flex-1 text-center lg:text-left">
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold mb-4 sm:mb-6">
+                <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">GAMASTI</span>
+              </h1>
 
-          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-4">
-            Mahasiswa Teknik Informatika Universitas Duta Bangsa Surakarta bersatu dalam semangat riset, kolaborasi, dan inovasi untuk kemajuan teknologi informasi.
-          </motion.p>
+              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-6 sm:mb-8 leading-relaxed">
+                Mahasiswa Teknik Informatika Universitas Duta Bangsa Surakarta bersatu dalam semangat riset, kolaborasi, dan inovasi untuk kemajuan teknologi informasi.
+              </motion.p>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.8 }} className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 px-4">
-            <Link
-              href="#blogs"
-              className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all text-center text-sm sm:text-base"
-            >
-              Jelajahi Karya
-            </Link>
-            <Link
-              href="/blog"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-medium backdrop-blur-sm transition-all text-sm sm:text-base"
-            >
-              <FiBook className="text-lg" />
-              Lihat Semua Blog
-            </Link>
-          </motion.div>
-        </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.8 }} className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3 sm:gap-4 mb-8">
+                <Link
+                  href="#blogs"
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold shadow-lg hover:shadow-blue-500/25 transition-all text-center text-sm sm:text-base"
+                >
+                  Jelajahi Karya
+                </Link>
+                <Link
+                  href="/blog"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-medium backdrop-blur-sm transition-all text-sm sm:text-base"
+                >
+                  <FiBook className="text-lg" />
+                  Lihat Semua Blog
+                </Link>
+              </motion.div>
+            </motion.div>
 
-        {/* Stats - Responsif */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.8 }} className="relative z-10 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto w-full px-4">
-          {[
-            { icon: FiTrendingUp, label: "Blog Aktif", value: blogs.length },
-            { icon: FiEye, label: "Pengunjung", value: visitorCount > 0 ? visitorCount.toLocaleString("id-ID") : "..." },
-            { icon: FiCalendar, label: "Tahun Aktif", value: "2025" },
-          ].map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/5 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 border border-white/10">
-                <stat.icon className="text-lg sm:text-xl md:text-2xl text-cyan-400" />
+            {/* Right Side - Mascot Image */}
+            <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="flex-1 flex items-center justify-center lg:justify-end">
+              <div className="relative w-full max-w-md lg:max-w-lg">
+                <Image src="/maskot.png" alt="Maskot GAMASTI" width={500} height={500} className="w-full h-auto object-contain drop-shadow-2xl" priority />
               </div>
-              <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-gray-400 leading-tight">{stat.label}</div>
-            </div>
-          ))}
-        </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Stats - Responsif */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.8 }} className="grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto w-full mt-12 sm:mt-16">
+            {[
+              { icon: FiTrendingUp, label: "Blog Aktif", value: blogs.length },
+              { icon: FiEye, label: "Pengunjung", value: visitorCount > 0 ? visitorCount.toLocaleString("id-ID") : "..." },
+              { icon: FiCalendar, label: "Tahun Aktif", value: "2025" },
+            ].map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/5 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 border border-white/10">
+                  <stat.icon className="text-lg sm:text-xl md:text-2xl text-cyan-400" />
+                </div>
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-xs sm:text-sm text-gray-400 leading-tight">{stat.label}</div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
       </section>
 
       {/* BLOG LIST SECTION - RESPONSIF */}

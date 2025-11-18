@@ -740,104 +740,19 @@ export default function BlogDetail() {
 
           {/* Content */}
           <div className="p-8">
-            {/* YouTube Videos Section */}
-            {isEditing ? (
-              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12 bg-white/5 border border-white/10 rounded-2xl p-6">
+            {/* YouTube Videos Section - Display Only */}
+            {!isEditing && blog.youtubeUrls && blog.youtubeUrls.length > 0 && (
+              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-12">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <FiYoutube className="text-red-500" />
-                  Edit Video YouTube
-                  <span className="text-sm text-gray-400 font-normal">(Maks. 3 video)</span>
+                  Video YouTube
                 </h2>
-
-                {/* Add YouTube URL */}
-                {editYoutubeUrls.length < 3 && (
-                  <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Tambah URL YouTube</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="url"
-                        value={youtubeInput}
-                        onChange={(e) => setYoutubeInput(e.target.value)}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        className="flex-1 bg-black/30 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                      />
-                      <button type="button" onClick={addYouTubeUrl} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-medium transition-colors">
-                        <FiPlus className="text-sm" />
-                        Tambah
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* YouTube URLs List */}
-                {editYoutubeUrls.length > 0 && (
-                  <div className="space-y-3">
-                    {editYoutubeUrls.map((url, index) => {
-                      const videoId = extractYouTubeId(url);
-                      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                      const isEditingThis = editingYoutubeIndex === index;
-
-                      return (
-                        <div key={index} className="bg-black/20 border border-white/10 rounded-lg p-3">
-                          {isEditingThis ? (
-                            <div className="space-y-3">
-                              <input
-                                type="url"
-                                value={editYoutubeInput}
-                                onChange={(e) => setEditYoutubeInput(e.target.value)}
-                                placeholder="https://www.youtube.com/watch?v=..."
-                                className="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                              />
-                              <div className="flex gap-2">
-                                <button type="button" onClick={saveEditYouTubeUrl} className="flex items-center gap-1 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium">
-                                  <FiCheck className="text-sm" />
-                                  Simpan
-                                </button>
-                                <button type="button" onClick={cancelEditYouTubeUrl} className="bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium">
-                                  Batal
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-3">
-                              <div className="shrink-0 w-20 h-12 bg-gray-700 rounded overflow-hidden">{videoId && <img src={thumbnailUrl} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />}</div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white truncate">Video {index + 1}</p>
-                                <p className="text-xs text-gray-400 truncate">{url}</p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => startEditYouTubeUrl(index)} className="text-blue-400 hover:text-blue-300 p-1" title="Edit video">
-                                  <FiEdit2 className="text-lg" />
-                                </button>
-                                <button type="button" onClick={() => removeYouTubeUrl(index)} className="text-red-400 hover:text-red-300 p-1" title="Hapus video">
-                                  <FiTrash2 className="text-lg" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {editYoutubeUrls.length === 0 && <p className="text-center text-gray-500 py-4">Belum ada video YouTube</p>}
+                <div className="space-y-6">
+                  {blog.youtubeUrls.map((url, index) => (
+                    <YouTubeEmbed key={index} url={url} title={`${blog.title} - Video ${index + 1}`} />
+                  ))}
+                </div>
               </motion.section>
-            ) : (
-              blog.youtubeUrls &&
-              blog.youtubeUrls.length > 0 && (
-                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-12">
-                  <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                    <FiYoutube className="text-red-500" />
-                    Video YouTube
-                  </h2>
-                  <div className="space-y-6">
-                    {blog.youtubeUrls.map((url, index) => (
-                      <YouTubeEmbed key={index} url={url} title={`${blog.title} - Video ${index + 1}`} />
-                    ))}
-                  </div>
-                </motion.section>
-              )
             )}
 
             {/* Content Blocks Section */}
@@ -1213,89 +1128,24 @@ export default function BlogDetail() {
               </motion.div>
             )}
 
-            {/* Images Gallery - Legacy support */}
-            {isEditing ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6">
+            {/* Images Gallery - Display Only */}
+            {!isEditing && blog.images && blog.images.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-12">
                 <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <FiImage className="text-purple-400" />
-                  Edit Galeri Gambar
-                  <span className="text-sm text-gray-400 font-normal">(Maks. 6 gambar)</span>
+                  Galeri Gambar
                 </h3>
-
-                {/* Upload New Images */}
-                {editImages.length + newImageFiles.length < 6 && (
-                  <div className="mb-6">
-                    <label className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 px-5 py-3 rounded-xl cursor-pointer transition-all w-full sm:w-auto">
-                      <FiPlus className="text-lg" />
-                      <span>Tambah Gambar Baru</span>
-                      <input type="file" accept="image/*" multiple onChange={handleAddImages} className="hidden" />
-                    </label>
-                    <p className="text-xs text-gray-400 mt-2">Maksimal 1MB per gambar. Total: {editImages.length + newImageFiles.length}/6</p>
-                  </div>
-                )}
-
-                {/* Existing Images */}
-                {editImages.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-lg font-semibold mb-3 text-gray-300">Gambar Saat Ini</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {editImages.map((img, i) => (
-                        <div key={`existing-${i}`} className="relative group rounded-xl overflow-hidden border border-white/10 bg-black/20">
-                          <img src={img} alt={`existing-${i}`} className="w-full h-32 object-cover" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button type="button" onClick={() => removeExistingImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
-                              <FiTrash2 className="text-white text-sm" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* New Images to Upload */}
-                {newImageFiles.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-semibold mb-3 text-gray-300">Gambar Baru (Belum Disimpan)</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {newImagePreviews.map((preview, i) => (
-                        <div key={`new-${i}`} className="relative group rounded-xl overflow-hidden border border-purple-500/50 bg-black/20">
-                          <img src={preview} alt={`new-${i}`} className="w-full h-32 object-cover" />
-                          <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">Baru</div>
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button type="button" onClick={() => removeNewImage(i)} className="bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors" title="Hapus gambar">
-                              <FiTrash2 className="text-white text-sm" />
-                            </button>
-                          </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-xs truncate max-w-[calc(100%-1rem)]">{newImageFiles[i]?.name}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {editImages.length === 0 && newImageFiles.length === 0 && <p className="text-center text-gray-500 py-4">Belum ada gambar</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {blog.images.map((img, i) => (
+                    <motion.div key={i} whileHover={{ scale: 1.02 }} className="relative group cursor-pointer rounded-2xl overflow-hidden border border-white/10 bg-black/20" onClick={() => setSelectedImage(img)}>
+                      <img src={img} alt={`image-${i}`} className="w-full h-64 object-cover transition-transform group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="text-white text-sm bg-black/70 px-3 py-2 rounded-lg">Klik untuk memperbesar</div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </motion.div>
-            ) : (
-              blog.images &&
-              blog.images.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-12">
-                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                    <FiImage className="text-purple-400" />
-                    Galeri Gambar
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {blog.images.map((img, i) => (
-                      <motion.div key={i} whileHover={{ scale: 1.02 }} className="relative group cursor-pointer rounded-2xl overflow-hidden border border-white/10 bg-black/20" onClick={() => setSelectedImage(img)}>
-                        <img src={img} alt={`image-${i}`} className="w-full h-64 object-cover transition-transform group-hover:scale-105" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="text-white text-sm bg-black/70 px-3 py-2 rounded-lg">Klik untuk memperbesar</div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              )
             )}
           </div>
 
