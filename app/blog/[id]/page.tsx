@@ -195,7 +195,7 @@ export default function BlogDetail() {
   const isValidYouTubeUrl = (url: string): boolean => {
     return extractYouTubeId(url) !== null;
   };
-
+// ehehe
   // Fungsi untuk YouTube URLs
   const addYouTubeUrl = () => {
     const trimmedUrl = youtubeInput.trim();
