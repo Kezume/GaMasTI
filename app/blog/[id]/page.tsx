@@ -35,6 +35,7 @@ import {
 } from "react-icons/fi";
 import DeleteBlogButton from "@/components/DeleteBlogButton";
 import YouTubeEmbed from "@/components/YoutubeEmbed";
+import CommentSection from "@/components/CommentSection";
 import { toast } from "react-toastify";
 
 interface Blog {
@@ -195,7 +196,7 @@ export default function BlogDetail() {
   const isValidYouTubeUrl = (url: string): boolean => {
     return extractYouTubeId(url) !== null;
   };
-// ehehe
+  // ehehe
   // Fungsi untuk YouTube URLs
   const addYouTubeUrl = () => {
     const trimmedUrl = youtubeInput.trim();
@@ -459,7 +460,7 @@ export default function BlogDetail() {
               youtubeUrls: editYoutubeUrls,
               images: finalImages,
             }
-          : null
+          : null,
       );
 
       // Reset state
@@ -712,8 +713,8 @@ export default function BlogDetail() {
                     blog.status === "published"
                       ? "bg-green-500/20 text-green-400 border border-green-500/30"
                       : blog.status === "draft"
-                      ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                      : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                        : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
                   }`}
                 >
                   Status: {blog.status}
@@ -1159,6 +1160,9 @@ export default function BlogDetail() {
             </div>
           )}
         </motion.article>
+
+        {/* Comment Section */}
+        <CommentSection blogId={id as string} />
       </div>
 
       {/* Image Modal */}
